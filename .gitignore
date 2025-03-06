@@ -1,0 +1,19 @@
+# Virtual Environment
+venv/
+__pycache__/
+
+# Django/Migrations
+*.pyc
+*.pyo
+*.log
+
+# Database (SQLite, jika ada)
+db.sqlite3
+
+# PostgreSQL (Opsional, jika pakai lokal dump)
+*.psql
+*.pgdump
+
+# IDE/Editor Files
+.vscode/
+.idea/

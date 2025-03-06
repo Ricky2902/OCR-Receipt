@@ -1,0 +1,25 @@
+{
+    "produk": [
+        {
+            "nama_produk": "EVEREADY AA4",
+            "jumlah": 2,
+            "harga_satuan": 16500.0,
+            "total_harga": 33000.0
+        },
+        {
+            "nama_produk": "JOYKO DOUBLE TAPE 24 MM",
+            "jumlah": 2,
+            "harga_satuan": 6000.0,
+            "total_harga": 12000.0
+        },
+        {
+            "nama_produk": "PLASTIK SAMPAH 6ox100 ISI",
+            "jumlah": 10,
+            "harga_satuan": 26500.0,
+            "total_harga": 26500.0
+        }
+    ],
+    "total_belanja": 71500.0,
+    "Cash": 71500.0,
+    "kembali": 0.0
+}
