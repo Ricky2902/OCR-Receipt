@@ -19,3 +19,11 @@ class UploadedImage(models.Model):
 class UploadedImage(models.Model):
     image = models.ImageField(upload_to='Paket/')
     created_at = models.DateTimeField(auto_now_add=True)  # Tambahkan jika belum ada
+   
+class UploadedImage(models.Model):
+    image = models.ImageField(upload_to='Exabytes/')
+    created_at = models.DateTimeField(auto_now_add=True)  # Tambahkan jika belum ada
+
+class UploadedImage(models.Model):
+    image = models.ImageField(upload_to='Struk/')
+    created_at = models.DateTimeField(auto_now_add=True)  # Tambahkan jika belum ada

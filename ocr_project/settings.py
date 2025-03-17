@@ -51,7 +51,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ocr_project.wsgi.application'
 
 DATABASES = {
-    'default': {
+     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'ocr-project',
         'USER': 'postgres',
