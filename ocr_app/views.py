@@ -593,7 +593,7 @@ class Struk(APIView):
 
     def get_nama_toko(self, body):
         for i in range(min(len(body), 5)):
-            if any(keyword in body[i].lower() for keyword in ["struk", "transaksi", "pembayaran"]):
+            if any(keyword in body[i].lower() for keyword in ["struk", "transaksi", "pembayaran", "receipt"]):
                 return body[i + 1] if i + 1 < len(body) and body[i + 1].strip() else ""
 
     def format_json(self, body):
@@ -707,154 +707,154 @@ class Struk(APIView):
             value = value.replace(",", "").replace(".", "").replace("=","").replace("@","").replace(":","").replace("-","").replace("Rp","").replace("Re","").replace("Fp","").replace("R","")
             return value.strip()
        
-        # Pengecekan Produk dalam Struk
-        jumlah_harga_pattern = re.compile(r"(?:Rp\s*)?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?$")
+        self.jumlah_harga_pattern = re.compile(r"(?:Rp\s*)?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?$")
+        self.regex_patterns = [
+            (r"x(\d+)\s*Rp\s*([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "x25 Rp 7.000" -> jumlah = 25, harga = 7.000
+            (r"(\d+)x[@0]([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "25x@7000" atau "25x07000" -> jumlah = 25, harga = 7000
+            (r"x?(\d[\d.,]*)=", None, "harga"),  # Mencari pola seperti "x7000=" atau "7000=" -> harga = 7000
+            (r"x([\d.,]+)@", None, "harga"),  # Mencari pola seperti "x7000@" -> harga = 7000
+            (r"(\d+)\s*x\s*Rp\s*([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "25 x Rp 7.000" -> jumlah = 25, harga = 7.000
+            (r"x(\d+)Rp([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "x25Rp7000" -> jumlah = 25, harga = 7.000
+            (r"@([\d.,]+)x", None, "harga"),  # Mencari pola seperti "@7000x" -> harga = 7000
+        ]
+        self.regex_patterns_ = [
+            (r"Rp\s*([\d.,]+)\s*x\s*(\d+)", "harga", "jumlah"),  # Mencari pola seperti "Rp 7.000 x 25" -> harga = 7.000, jumlah = 25
+            (r"([\d.,]+)\s*x\s*(\d+)", "harga", "jumlah"),  # Mencari pola seperti "7.000 x 25"-> harga = 7.000, jumlah = 25
+        ]
+        self.pola_patterns = [
+            r'((?=.*[A-Za-z])[\w\s.-]+)\s+(\d{1,2})\s+([\d,.]+)\s+([\d,.]+)',  # Nama Produk -> Jumlah -> Harga -> Total Harga | Contoh: "Roti Tawar 2 5.000 10.000"
+            r'(\d{1,2})\s+([\d,.]+)\s+((?=.*[A-Za-z])[\w\s.-]+)\s+([\d,.]+)',  # Jumlah -> Harga -> Nama Produk -> Total Harga | Contoh: "2 5.000 Roti Tawar 10.000"
+            r'(\d{1,2})\s+((?=.*[A-Za-z])[\w\s.-]+)\s+([\d,.]+)\s+([\d,.]+)',  # Jumlah -> Nama Produk -> Harga -> Total Harga | Contoh: "2 Roti Tawar 5.000 10.000"
+            r'((?=.*[A-Za-z])[\w\s.-]+)\s+([\d,.]+)\s+(\d{1,2})\s+([\d,.]+)',  # Nama Produk -> Harga -> Jumlah -> Total Harga | Contoh: "Roti Tawar 5.000 2 10.000"
+            r'([\d,.]+)\s+((?=.*[A-Za-z])[\w\s.-]+)\s+(\d{1,2})\s+([\d,.]+)',  # Harga -> Nama Produk -> Jumlah -> Total Harga | Contoh: "5.000 Roti Tawar 2 10.000"
+            r'((?=.*[A-Za-z])[\w\s.-]+)\s+([\d,.]+)\s+(\d{1,2})\s+([\d,.]+)',  # Nama Produk -> Harga -> Jumlah -> Total Harga | Contoh: "Roti Tawar 5.000 2 10.000"
+            r'(\d{1,2})\s+((?=.*[A-Za-z])[\w\s.-]+)\s+([\d,.]+)',  # Jumlah -> Nama Produk -> Harga# Contoh: "2 Roti Tawar 5.000"
+        ]
+
+
+        pola_utama = None
 
         for i in range(len(body)):
-            jumlah_harga_match = jumlah_harga_pattern.match(body[i].strip())
-
-            if jumlah_harga_match:
-                jumlah_harga = sanitize_number_produk(body[i].strip())
-                nama_produk = None
-                jumlah = None
-                harga = None
+            if not self.jumlah_harga_pattern.match(body[i].strip()):
+                continue
             
-                print("cek",jumlah_harga_match)
+            jumlah_harga = sanitize_number_produk(body[i].strip())
+            nama_produk, jumlah, harga = None, None, None
+            regex_success = False
 
-                if i >= 3:
-                    nama_produk = body[i - 3].strip()
-                if not (any(c.isalpha() for c in nama_produk)or "." in nama_produk) and i >= 2:  
+            print("CEK:", body[i])
+            if i >= 3:
+                nama_produk = body[i - 3].strip()
+                if not (any(c.isalpha() for c in nama_produk)or "Rp" in nama_produk) and i >= 2:  
                     nama_produk = body[i - 2].strip()
-                if not (any(c.isalpha() for c in nama_produk)or "." in nama_produk) and i >= 1: 
+                if not (any(c.isalpha() for c in nama_produk)or "Rp" in nama_produk) and i >= 1: 
                     nama_produk = body[i - 1].strip()
 
+            for j in range(1, 3):
+                if i >= j:
+                    for pattern, jumlah_group, harga_group in self.regex_patterns:
+                        match = re.search(pattern, body[i - j])
+                        if match:
+                            regex_success = True
+                            jumlah = sanitize_number_produk(match.group(1)) if jumlah_group else jumlah
+                            harga = sanitize_number_produk(match.group(2 if jumlah_group else 1)) if harga_group else harga
+                            break
+            print("Jumlah",jumlah)
+            print("harga",harga)
 
-                # Regex pola untuk mencari jumlah dan harga dalam satu string
-                regex_patterns = [
-                    (r"x(\d+)\s*Rp\s*([\d.,]+)", "jumlah", "harga"),   # Contoh: "x25 Rp7.000"
-                    (r"(\d+)x[@0]([\d.,]+)", "jumlah", "harga"),    # Contoh: "1x@7.000"
-                    (r"x?(\d[\d.,]*)=", None, "harga"),               # Contoh: "x7.000="
-                    (r"x([\d.,]+)@", None, "harga"),                  # Contoh: "x7.000@"
-                    (r"(\d+)\s*x\s*Rp\s*([\d.,]+)", "jumlah", "harga"),  # Contoh: "25 x Rp 7.000"
-                    (r"x(\d+)Rp([\d.,]+)", "jumlah", "harga"),           # Contoh: "x25Rp7.000"
-                    (r"@([\d.,]+)x", None, "harga"),                  # Contoh: "@7.000x"
-                ]   
-                for j in range(1, 3): 
-                    if i >= j:
-                        for pattern, jumlah_group, harga_group in regex_patterns:
-                            match = re.search(pattern, body[i - j])
-                            if match:
-                                if jumlah_group and not jumlah:
-                                    jumlah = sanitize_number_produk(match.group(1))
-                                if harga_group and not harga:
-                                    harga = sanitize_number_produk(match.group(2) if jumlah_group else match.group(1))
-                                break
-                print("Jumlah",jumlah)
-                print("harga",harga)
-
-                # Regex pola untuk mencari Harga dan Jumlah dalam satu string
-                regex_patterns_ = [
-                    (r"Rp\s*([\d.,]+)\s*x\s*(\d+)", "harga", "jumlah"),  # Contoh: "Rp 7.000 x 25"
-                    (r"(?<![a-zA-Z])([\d.,]+)x(\d+)(?![a-zA-Z])", "harga", "jumlah"),          # Contoh: "7.000x25"
-                ]   
-                for j in range(1, 3): 
-                    if i >= j:
-                        for pattern, jumlah_group, harga_group in regex_patterns_:
-                            match = re.search(pattern, body[i - j])
-                            if match:
-                                if harga_group and not harga:
-                                    harga = sanitize_number_produk(match.group(1))
-                                if jumlah_group and not jumlah:
-                                    jumlah = sanitize_number_produk(match.group(2) if harga_group else match.group(1))
-                                break
-                print("Jumlah_1",jumlah)
-                print("harga_",harga)
-
-                if jumlah and harga:
+            for j in range(1, 3): 
+                if i >= j:
+                    for pattern, jumlah_group, harga_group in self.regex_patterns_:
+                        match = re.search(pattern, body[i - j])
+                        if match:
+                            regex_success = True
+                            if harga_group and not harga:
+                                harga = sanitize_number_produk(match.group(1))
+                            if jumlah_group and not jumlah:
+                                jumlah = sanitize_number_produk(match.group(2) if harga_group else match.group(1))
+                            break
+            print("Jumlah_1",jumlah)
+            print("harga_",harga)
+            
+            if jumlah and harga:
                     if  i >= 2:  
                         nama_produk = body[i - 2].strip()
                     if "." in nama_produk and i >= 1: 
                         nama_produk = body[i - 1].strip()
 
-                if not jumlah and harga: 
-                    for j in range(i-3, i):  
-                        if body[j].isdigit():  
-                            jumlah_int = int(body[j])
-                            if 1 <= jumlah_int <= 1000:  
-                                jumlah = jumlah_int 
-                                break 
+            if not jumlah and harga: 
+                for j in range(i-3, i):  
+                    if body[j].isdigit():  
+                        jumlah_int = int(body[j])
+                        if 1 <= jumlah_int <= 200:  
+                            jumlah = jumlah_int 
+                            break 
 
-                # Validasi dengan Pola dengan regex
-                pattern_1 = r'([\w\s-]+)\s+(\d{1,2})\s+([\d,.]+)\s+([\d,.]+)'  # Pola Nama, Jumlah, Harga, Total
-                match_1 = re.fullmatch(pattern_1, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_1:
-                    nama_produk = match_1.group(1).strip() + body[i + 1]
-                    jumlah = sanitize_number_produk(match_1.group(2))
-                    harga = sanitize_number_produk(match_1.group(3))
-                    jumlah_harga = sanitize_number_produk(match_1.group(4))
-
-                pattern_2 = r'(\d{1,2})\s+([\d,.]+)\s+([\w\s-]+)\s+([\d,.]+)'  #Pola Jumlah, Harga, Nama, Total
-                match_2 =  re.fullmatch(pattern_2, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_2:
-                    nama_produk = match_2.group(3).strip()
-                    jumlah = sanitize_number_produk(match_2.group(1))
-                    harga = sanitize_number_produk(match_2.group(2))
-                    jumlah_harga = sanitize_number_produk(match_2.group(4))
-
-                pattern_3 = r'(\d{1,2})\s+([\w\s-]+)\s+([\d,.]+)\s+([\d,.]+)' #Pola Jumlah, Nama, Harga, Total
-                match_3 =  re.fullmatch(pattern_3, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_3:
-                    nama_produk = match_3.group(2).strip()
-                    jumlah = sanitize_number_produk(match_3.group(1))
-                    harga = sanitize_number_produk(match_3.group(3))
-                    jumlah_harga = sanitize_number_produk(match_3.group(4))
-
-                pattern_4 = r'([\w\s-]+)\s+([\d,.]+)\s+(\d{1,2})\s+([\d,.]+)' #Pola Nama, Harga, Jumlah, Total
-                match_4 =  re.fullmatch(pattern_4, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_4:
-                    nama_produk = match_4.group(1).strip()
-                    jumlah = sanitize_number_produk(match_4.group(3))
-                    harga = sanitize_number_produk(match_4.group(2))
-                    jumlah_harga = sanitize_number_produk(match_4.group(4))
-
-                pattern_5 = r"([\d,.]+)\s+([\w\s-]+)\s+(\d{1,2})\s+([\d,.]+)" #Pola Total, Nama, Jumlah, Harga
-                match_5 =  re.fullmatch(pattern_5, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_5:
-                    nama_produk = match_5.group(2).strip()
-                    jumlah = sanitize_number_produk(match_5.group(3))
-                    harga = sanitize_number_produk(match_5.group(4))
-                    jumlah_harga = sanitize_number_produk(match_5.group(1))
-
-                pattern_6 = r"([\w\s-]+)\s+([\d,.]+)\s+(\d{1,2})\s+([\d,.]+)" #Pola Nama, Total, Jumlah, Harga
-                match_6 =  re.fullmatch(pattern_6, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
-                if match_6:
-                    nama_produk = match_6.group(1).strip()
-                    jumlah = sanitize_number_produk(match_6.group(3))
-                    harga = sanitize_number_produk(match_6.group(4))
-                    jumlah_harga = sanitize_number_produk(match_6.group(2))
-
-                # Hitung harga per unit jika jumlah dan jumlah_harga tersedia
-                if not harga and jumlah and jumlah_harga:
-                    harga = int(jumlah_harga) // int(jumlah) if int(jumlah) != 0 else None
-
-                # Cek validitas produk sebelum menambahkan ke transaksi
-                valid_produk = (
-                    nama_produk and any(c.isalpha() for c in nama_produk)  
-                    and jumlah and int(jumlah) <= 100
-                    and harga and jumlah_harga 
-                )
-
-                if valid_produk:
-                    transaksi["Data"]["Produk"].append({
+            valid_produk = (
+                nama_produk and any(c.isalpha() for c in nama_produk)
+                and jumlah and int(jumlah) <= 200
+                and int(sanitize_number_produk(harga)) >= 100 and int(sanitize_number_produk(jumlah_harga)) >= 100
+            )
+            print("Namy",nama_produk)
+            print("hary",harga)
+            print("Jumy",jumlah)
+            print("Toly",jumlah_harga)
+            
+            if valid_produk:
+                transaksi["Data"]["Produk"].append({
                         "Nama": nama_produk,
                         "Jumlah": int(jumlah),
                         "Harga": int(harga),
                         "Jumlah Harga": int(jumlah_harga)
                     })
+            if regex_success:
+                continue
 
-        with open("hasil_transaksi.json", "w") as file:
-            json.dump(transaksi, file, indent=4)
+            pola_ditemukan = False
+            pola_check = [pola_utama] if pola_utama else self.pola_patterns
 
-        print("Transaksi berhasil disimpan sebagai hasil_transaksi.json")
+            for pattern in pola_check:
+                match = re.fullmatch(pattern, f"{body[i-3]} {body[i-2]} {body[i-1]} {body[i]}".strip())
+                if match:
+                    pola_ditemukan = True
+                    if pola_utama is None:
+                        pola_utama = pattern
+                    
+                    if pattern == self.pola_patterns[0]:
+                        nama_produk, jumlah, harga, jumlah_harga = match.groups()
+                    elif pattern == self.pola_patterns[1]:
+                        jumlah, harga, nama_produk, jumlah_harga = match.groups()
+                    elif pattern == self.pola_patterns[2]:
+                        jumlah, nama_produk, harga, jumlah_harga = match.groups()
+                    elif pattern == self.pola_patterns[3]:
+                        nama_produk, harga, jumlah, jumlah_harga = match.groups()
+                    elif pattern == self.pola_patterns[4]:
+                        jumlah_harga, nama_produk, jumlah, harga = match.groups()
+                    elif pattern == self.pola_patterns[5]:
+                        nama_produk, jumlah_harga, jumlah, harga = match.groups()
+                    elif pattern == self.pola_patterns[6]:
+                        jumlah, nama_produk, jumlah_harga = match.groups()
+                    break
+            
+            if not harga and jumlah and jumlah_harga:
+                harga = int(jumlah_harga) // int(jumlah) if int(jumlah) != 0 else None
+            
+            valid_produk = (
+                nama_produk and any(c.isalpha() for c in nama_produk)
+                and jumlah and int(jumlah) <= 200
+                and int(sanitize_number_produk(harga)) >= 100 and int(sanitize_number_produk(jumlah_harga)) >= 100
+            )
+            print("Namz",nama_produk)
+            print("harz",harga)
+            print("Jumz",jumlah)
+            print("Tolz",jumlah_harga)
+            
+            if valid_produk:
+                transaksi["Data"]["Produk"].append({
+                    "Nama": nama_produk.strip(),
+                    "Jumlah": int(sanitize_number_produk(jumlah)),
+                    "Harga": int(sanitize_number_produk(harga)),
+                    "Jumlah Harga": int(sanitize_number_produk(jumlah_harga))
+                })
 
         return transaksi
