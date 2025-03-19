@@ -1,0 +1,80 @@
+{
+    "Nama Toko": "Alfamart",
+    "Tanggal": "11-02-2025",
+    "Data": {
+        "Produk": [
+            {
+                "Nama": "Green Sands Minuman Karbonasi Lemon & Grape K",
+                "Jumlah": 2,
+                "Harga": 6500,
+                "Jumlah Harga": 13000
+            },
+            {
+                "Nama": "Tebs Zero Minuman SodaSparkling Leci 300 ml",
+                "Jumlah": 1,
+                "Harga": 5000,
+                "Jumlah Harga": 5000
+            },
+            {
+                "Nama": "Greenfields Susu UHT FullCream Kotak 950 ml",
+                "Jumlah": 5,
+                "Harga": 24500,
+                "Jumlah Harga": 122500
+            },
+            {
+                "Nama": "Ultra Milk Susu UHT CoklatKotak 1 L",
+                "Jumlah": 1,
+                "Harga": 21700,
+                "Jumlah Harga": 21700
+            },
+            {
+                "Nama": "Alfamart Tas Belanja EcoBag 30x40 cm Assorted",
+                "Jumlah": 1,
+                "Harga": 4000,
+                "Jumlah Harga": 4000
+            },
+            {
+                "Nama": "Bag 30x40 cm Assorted",
+                "Jumlah": 40,
+                "Harga": 30,
+                "Jumlah Harga": 1
+            },
+            {
+                "Nama": "Yakult Minuman Susu Fermentasi5x65 ml",
+                "Jumlah": 1,
+                "Harga": 10500,
+                "Jumlah Harga": 10500
+            },
+            {
+                "Nama": "You C1000 Minuman Vitamin C Jeruk 140 ml",
+                "Jumlah": 3,
+                "Harga": 8100,
+                "Jumlah Harga": 24300
+            },
+            {
+                "Nama": "Coca-Cola Zero Sugar Minuman",
+                "Jumlah": 2,
+                "Harga": 6000,
+                "Jumlah Harga": 12000
+            },
+            {
+                "Nama": "Fanta Zero Minuman SodaRasa Stroberi Bebas Gula",
+                "Jumlah": 2,
+                "Harga": 6000,
+                "Jumlah Harga": 12000
+            },
+            {
+                "Nama": "Total Diskon",
+                "Jumlah": 18,
+                "Harga": 225000,
+                "Jumlah Harga": 17900
+            }
+        ]
+    },
+    "Subtotal": 225000,
+    "Pajak": 0,
+    "Biaya Layanan": 0,
+    "Diskon": 17900,
+    "Lainnya": 13704,
+    "Grand Total": 193396
+}
