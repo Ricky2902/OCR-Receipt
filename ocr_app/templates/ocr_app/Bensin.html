@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Struk</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: left;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: left;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        #preview {
+            width: 30%;
+            display: none;
+        }
+        .result-container {
+            width: 70%;
+            border: 2px solid #000;
+            padding: 10px;
+        }
+        #output {
+            margin-top: 10px;
+            text-align: left;
+        }
+        .divider {
+            border-top: 2px dashed black;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .editable {
+            display: inline-block;
+            min-width: 50px;
+            padding: 2px;
+            border: 1px dashed transparent;
+        }
+        .editable:focus {
+            border: 1px dashed black;
+            outline: none;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px;
+            cursor: pointer;
+        }
+        #uploadform {
+            margin-top: 10px;
+            padding: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Unggah Struk pembelian bensin yang akan diproses</h1>
+    <p>Diharapkan Mengupload Gambar yang Bersih dan Jelas serta Sejajar dan Presisi !!!</p>
+    
+    <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="image" accept="image/*">
+        <br><br>
+        <button type="button" id="uploadButton">Unggah</button>
+    </form>
+
+    <div class="container">
+        <img id="preview" src="" alt="Preview Gambar">
+        <div class="result-container" id="resultContainer">
+            <div id="summary"></div>
+            <button id="saveButton" style="display:none;">Simpan</button>
+        </div>
+    </div>
+    <button id="editButton" style="display:none;">Edit</button>
+    <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
+    <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
+    
+<script>
+    document.getElementById('uploadButton').addEventListener('click', function () {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Pilih gambar terlebih dahulu!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        // Pratinjau gambar sebelum dikirim
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.getElementById('preview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        // Kirim data ke backend Django
+        fetch('http://127.0.0.1:8000/page/Bensin/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Response dari server:", data); 
+            function makeEditable(value) {
+                return `<span class="editable" contenteditable="true">${value}</span>`;
+            }
+
+            document.getElementById('saveButton').style.display = "block";
+            document.getElementById('downloadButton').style.display = "none"; 
+
+            // Menampilkan ringkasan
+            document.getElementById('summary').innerHTML = `
+                <p><strong>Nama SPBU:</strong> ${makeEditable(data["Nama SPBU"])}</p>
+                <p><strong>Tanggal:</strong> ${makeEditable(data["Tanggal"])}</p>
+                <div class="divider"></div>
+                <p><strong>Produk:</strong> ${makeEditable(data["Produk"])}</p>
+                <p><strong>Nominal:</strong> ${makeEditable(data["Nominal"])}</p>
+                <p><strong>Volume:</strong> ${makeEditable(data["Volume"])}</p>
+                <p><strong>Total Harga:</strong> ${makeEditable(data["Total Harga"])}</p>
+            `;
+        })
+        .catch(error => {
+            console.error('Error Fetching:', error);
+            alert("Terjadi kesalahan saat mengambil data. Silakan coba lagi.");
+        });
+    });
+
+    document.getElementById('saveButton').addEventListener('click', function () {
+        // Hilangkan tombol tambah baris dan simpan
+        document.getElementById('saveButton').style.display = "none";
+
+        // Tampilkan tombol unduh setelah penyimpanan
+        document.getElementById('editButton').style.display = "block";
+        document.getElementById('downloadButton').style.display = "block";
+        document.getElementById('downloadExcelButton').style.display = "block";
+    });
+
+    document.getElementById('editButton').addEventListener('click', function () {
+        // Tampilkan tombol tambah baris dan simpan
+        document.getElementById('saveButton').style.display = "block";
+
+        // Sembunyikan tombol Edit dan Unduh
+        document.getElementById('editButton').style.display = "none";
+        document.getElementById('downloadExcelButton').style.display = "none";
+        document.getElementById('downloadButton').style.display = "none";
+
+    });
+
+    document.getElementById('downloadButton').addEventListener('click', function () {
+        const resultContainer = document.getElementById('resultContainer');
+
+        const spbuName = summaryData["Nama SPBU"];
+        const fileName = `Hasil_Struk_${spbuName}.png`;
+
+        html2canvas(resultContainer).then(canvas => {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = fileName;
+            link.click();
+        });
+    });
+
+    document.getElementById('downloadExcelButton').addEventListener('click', function () {
+
+    // **Ambil informasi tambahan**
+    let summaryElements = document.querySelectorAll("#summary p span");
+    
+    let summaryData = {
+        "Nama SPBU": summaryElements[0]?.textContent || "",
+        "Tanggal": summaryElements[1]?.textContent || "",
+        "Produk": summaryElements[2]?.textContent || "",
+        "Nominal": summaryElements[3]?.textContent || "",
+        "Volume": summaryElements[4]?.textContent || "",
+        "Total Harga": summaryElements[5]?.textContent || "",
+    };
+
+    let sumData = [
+        ["Nama SPBU", summaryData["Nama SPBU"]],
+        ["Tanggal", summaryData["Tanggal"]],
+        ["Produk", summaryData["Produk"]],
+        ["Nominal", summaryData["Nominal"]],
+        ["Volume", summaryData["Volume"]],
+        ["Total Harga", summaryData["Total Harga"]],
+        [""], // Baris kosong sebagai pemisah
+    ];
+
+    // Pastikan tabel tidak kosong sebelum ditambahkan
+        FinalData = [...sumData];
+
+    let newWs = XLSX.utils.aoa_to_sheet(FinalData);
+    
+    // **Buat workbook dan tambahkan sheet baru**
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, newWs, "Data Struk");
+
+    const spbuName = summaryData["Nama SPBU"];
+    const fileName = `Data_Struk_${spbuName}.xlsx`;
+    // **Simpan file Excel**
+    XLSX.writeFile(wb, fileName);
+});
+
+
+</script>
+
+</body>
+
+</html>

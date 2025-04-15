@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Struk</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: left;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: left;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        #preview {
+            width: 30%;
+            display: none;
+        }
+        .result-container {
+            width: 70%;
+            border: 2px solid #000;
+            padding: 10px;
+        }
+        #output {
+            margin-top: 10px;
+            text-align: left;
+        }
+        .divider {
+            border-top: 2px dashed black;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .editable {
+            display: inline-block;
+            min-width: 50px;
+            padding: 2px;
+            border: 1px dashed transparent;
+        }
+        .editable:focus {
+            border: 1px dashed black;
+            outline: none;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px;
+            cursor: pointer;
+        }
+        #uploadform {
+            margin-top: 10px;
+            padding: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Unggah Struk yang akan diproses</h1>
+    <p>Diharapkan Mengupload Gambar yang Bersih dan Jelas serta Sejajar dan Presisi !!!</p>
+    
+    <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="image" accept="image/*">
+        <br><br>
+        <button type="button" id="uploadButton">Unggah</button>
+    </form>
+
+    <div class="container">
+        <img id="preview" src="" alt="Preview Gambar">
+        <div class="result-container" id="resultContainer">
+            <div id="output"></div>
+            
+            <table id="tableOutput" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Nama Produk</th>
+                        <th>Jumlah</th>
+                        <th>Harga</th>
+                        <th>Jumlah Harga</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="addRowButton" style="display:none;">Tambah Baris</button>
+            <button id="saveButton" style="display:none;">Simpan</button>
+
+            <div id="summary"></div>
+        </div>
+    </div>
+    <button id="editButton" style="display:none;">Edit</button>
+    <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
+    <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
+    
+<script>
+    document.getElementById('uploadButton').addEventListener('click', function () {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Pilih gambar terlebih dahulu!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        // Pratinjau gambar sebelum dikirim
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.getElementById('preview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        // Kirim data ke backend Django
+        fetch('http://127.0.0.1:8000/page/Struk/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            function makeEditable(value) {
+                return `<span class="editable" contenteditable="true">${value}</span>`;
+            }
+
+            document.getElementById('output').innerHTML = `
+                <p><strong>${makeEditable(data["Nama Toko"])}</strong></p>
+                <div class="divider"></div>
+                <p>${makeEditable(data["Tanggal"])}</p>
+            `;
+
+            // Menampilkan data produk dalam tabel
+            const tableBody = document.querySelector("#tableOutput tbody");
+            tableBody.innerHTML = "";
+            data.Data.Produk.forEach(item => {
+                addRowToTable(item.Nama, item.Jumlah, item.Harga, item["Jumlah Harga"]);
+            });
+
+            document.getElementById('tableOutput').style.display = "table";
+            document.getElementById('addRowButton').style.display = "block";
+            document.getElementById('saveButton').style.display = "block";
+            document.getElementById('downloadButton').style.display = "none"; // Sembunyikan tombol unduh sebelum penyimpanan
+
+            // Menampilkan ringkasan
+            document.getElementById('summary').innerHTML = `
+                <p><strong>Subtotal:</strong> ${makeEditable(data["Subtotal"])}</p>
+                <p><strong>Pajak:</strong> ${makeEditable(data["Pajak"])}</p>
+                <p><strong>Biaya Layanan:</strong> ${makeEditable(data["Biaya Layanan"])}</p>
+                <p><strong>Diskon:</strong> ${makeEditable(data["Diskon"])}</p>
+                <p><strong>Lainnya:</strong> ${makeEditable(data["Lainnya"])}</p>
+                <div class="divider"></div>
+                <p><strong>Grand Total:</strong> ${makeEditable(data["Grand Total"])}</p>
+            `;
+        })
+        .catch(error => {
+            console.error('Error Fetching:', error);
+            alert("Terjadi kesalahan saat mengambil data. Silakan coba lagi.");
+        });
+    });
+
+    function addRowToTable(nama = "", jumlah = "", harga = "", jumlahHarga = "") {
+        const tableBody = document.querySelector("#tableOutput tbody");
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td><span class="editable" contenteditable="true">${nama}</span></td>
+            <td><span class="editable" contenteditable="true">${jumlah}</span></td>
+            <td><span class="editable" contenteditable="true">${harga}</span></td>
+            <td><span class="editable" contenteditable="true">${jumlahHarga}</span></td>
+            <td class="action-column"><button onclick="removeRow(this)">Hapus</button></td>
+        `;
+
+        tableBody.appendChild(row);
+    }
+
+    document.getElementById('addRowButton').addEventListener('click', function () {
+        addRowToTable();
+    });
+
+    document.getElementById('saveButton').addEventListener('click', function () {
+        // Hilangkan tombol tambah baris dan simpan
+        document.getElementById('addRowButton').style.display = "none";
+        document.getElementById('saveButton').style.display = "none";
+
+        // Hapus kolom aksi (hapus)
+        document.querySelectorAll("#tableOutput tbody tr").forEach(row => {
+            if (row.lastElementChild) {
+                row.lastElementChild.remove(); // Hapus kolom terakhir dari setiap baris (kolom aksi)
+            }
+        });
+
+        // Hapus header kolom "Aksi" jika ada
+        const tableHeader = document.querySelector("#tableOutput thead tr th:last-child");
+        if (tableHeader) tableHeader.remove();
+
+        // Tampilkan tombol unduh setelah penyimpanan
+        document.getElementById('editButton').style.display = "block";
+        document.getElementById('downloadButton').style.display = "block";
+        document.getElementById('downloadExcelButton').style.display = "block";
+    });
+
+    document.getElementById('editButton').addEventListener('click', function () {
+        // Tampilkan tombol tambah baris dan simpan
+        document.getElementById('addRowButton').style.display = "block";
+        document.getElementById('saveButton').style.display = "block";
+
+        // Sembunyikan tombol Edit dan Unduh
+        document.getElementById('editButton').style.display = "none";
+        document.getElementById('downloadExcelButton').style.display = "none";
+        document.getElementById('downloadButton').style.display = "none";
+
+        // **Tambahkan kembali kolom aksi**
+        let table = document.getElementById("tableOutput");
+        let thead = table.querySelector("thead tr");
+        let tbody = table.querySelector("tbody");
+
+        // **Tambahkan kembali header "Aksi" jika hilang**
+        if (!thead.querySelector(".action-header")) {
+            let th = document.createElement("th");
+            th.textContent = "Aksi";
+            th.classList.add("action-header");
+            thead.appendChild(th);
+        }
+
+        // **Tambahkan kembali tombol hapus di setiap baris**
+        tbody.querySelectorAll("tr").forEach(row => {
+            let td = document.createElement("td");
+            td.classList.add("action-column");
+            td.innerHTML = `<button onclick="removeRow(this)">Hapus</button>`;
+            row.appendChild(td);
+        });
+    });
+
+    function removeRow(button) {
+        button.parentElement.parentElement.remove();
+    }
+
+    document.getElementById('downloadButton').addEventListener('click', function () {
+        const resultContainer = document.getElementById('resultContainer');
+
+        const fileName = `Hasil_Struk_Belanja.png`;
+
+        html2canvas(resultContainer).then(canvas => {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = fileName;
+            link.click();
+        });
+    });
+
+    document.getElementById('downloadExcelButton').addEventListener('click', function () {
+    let table = document.getElementById("tableOutput");
+    let ws = XLSX.utils.table_to_sheet(table);
+    
+    // **Ambil informasi tambahan**
+    let namaToko = document.querySelector("#output p strong").textContent;
+    let tanggal = document.querySelector("#output p:nth-child(3)").textContent;
+    let summaryElements = document.querySelectorAll("#summary p span");
+    
+    let summaryData = {
+        "Subtotal": summaryElements[0]?.textContent || "",
+        "Pajak": summaryElements[1]?.textContent || "",
+        "Biaya Layanan": summaryElements[2]?.textContent || "",
+        "Diskon": summaryElements[3]?.textContent || "",
+        "Lainnya": summaryElements[4]?.textContent || "",
+        "Grand Total": summaryElements[5]?.textContent || ""
+    };
+
+    // **Tambahkan informasi tambahan ke lembar kerja**
+    let extraData = [
+        ["Nama Toko", namaToko],
+        ["Tanggal", tanggal],
+        [],
+    ];
+
+    let sumData = [
+        [],
+        ["Subtotal", summaryData["Subtotal"]],
+        ["Pajak", summaryData["Pajak"]],
+        ["Biaya Layanan", summaryData["Biaya Layanan"]],
+        ["Diskon", summaryData["Diskon"]],
+        ["Lainnya", summaryData["Lainnya"]],
+        ["Grand Total", summaryData["Grand Total"]],
+    ]
+
+    // **Gabungkan informasi tambahan dan data tabel**
+    let data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    let finalData = [...extraData, ...data, ...sumData];
+
+    let newWs = XLSX.utils.aoa_to_sheet(finalData);
+    
+    // **Buat workbook dan tambahkan sheet baru**
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, newWs, "Data Struk");
+
+    const TokoName = namaToko;
+    const fileName = `Data_Struk_${TokoName}.xlsx`;
+    // **Simpan file Excel**
+    XLSX.writeFile(wb, fileName);
+});
+
+</script>
+
+</body>
+
+</html>
