@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Split Bill System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { display: flex; flex-direction: column; gap: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table, th, td { border: 1px solid #999; }
+    th, td { padding: 8px; text-align: center; }
+    .participant { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+    .participant input { margin-bottom: 5px; }
+    .total { margin-top: 10px; font-weight: bold; }
+    .button { margin-top: 10px; }
+    .delete-btn { background-color: red; color: white; border: none; margin-left: 10px; padding: 2px 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<h2>Split Bill System</h2>
+<p id="storeInfo"></p>
+
+<input type="file" id="fileInput" />
+
+<div class="container">
+    <h3>Daftar Produk</h3>
+    <table id="productTable">
+      <thead>
+        <tr>
+          <th>Nama Produk</th>
+          <th>Jumlah</th>
+          <th>Harga</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  
+    <button onclick="addParticipant()">Tambah Partisipan</button>
+    <div id="participants"></div>
+  
+    <div class="button">
+      <button onclick="calculateSplit()">Hitung Split</button>
+    </div>
+    <div class="total" id="totalResult"></div>
+  </div>
+
+<pre id="output" style="white-space: pre-wrap;"></pre>
+
+<script>
+  let splitData = {
+    toko: "TLOGOMAS 44 MALANG 08113336422",
+    tanggal: "21/01/22",
+    produk: [],
+    summary: {
+      Subtotal: 0,
+      Pajak: 0,
+      "Biaya Layanan": 0,
+      Diskon: 0,
+      Lainnya: 0,
+      "Grand Total": 0
+    }
+  };
+
+  const fileInput = document.getElementById('fileInput');
+  fileInput.addEventListener('change', handleFile, false);
+
+  function handleFile(e) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+      let headerIndex = rows.findIndex(r => r[0]?.toString().trim() === "Nama Produk");
+      splitData.produk = [];
+
+      if (headerIndex !== -1) {
+        for (let i = headerIndex + 1; i < rows.length; i++) {
+          const [nama, jumlah, harga, total] = rows[i];
+          if (!nama) break;
+          splitData.produk.push({ namaProduk: nama, jumlah: parseInt(jumlah), harga: parseInt(harga), jumlahHarga: parseInt(total) });
+        }
+      }
+
+      const kategori = ["Subtotal", "Pajak", "Biaya Layanan", "Diskon", "Lainnya", "Grand Total"];
+      rows.forEach(([key, val]) => {
+        if (kategori.includes(key) && val) splitData.summary[key] = parseInt(val);
+      });
+
+      renderTable();
+      renderStoreInfo();
+    };
+    reader.readAsArrayBuffer(e.target.files[0]);
+  }
+
+  function renderTable() {
+    const tbody = document.querySelector("#productTable tbody");
+    tbody.innerHTML = "";
+    splitData.produk.forEach(item => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${item.namaProduk}</td>
+          <td>${item.jumlah}</td>
+          <td>${item.harga}</td>
+          <td>${item.jumlahHarga}</td>
+        </tr>
+      `;
+    });
+  }
+
+  function renderStoreInfo() {
+    document.getElementById("storeInfo").innerHTML = ` 
+      <strong>Nama Toko:</strong> ${splitData.toko} <br>
+      <strong>Tanggal:</strong> ${splitData.tanggal} <br>
+      <strong>Grand Total:</strong> Rp ${splitData.summary["Grand Total"].toLocaleString()}
+    `;
+  }
+
+  function getProductList() {
+    return splitData.produk.map(p => ({
+      name: p.namaProduk,
+      quantity: p.jumlah,
+      price: p.harga
+    }));
+  }
+
+  function addParticipant() {
+    const productList = getProductList();
+    const participantId = Date.now();
+    const container = document.createElement("div");
+    container.className = "participant";
+    container.setAttribute("data-id", participantId);
+
+    let html = `<label>Nama Orang:</label>
+                <input type="text" placeholder="Nama" class="participant-name"/><br><label>Pilih Produk:</label><br>`;
+
+    productList.forEach(product => {
+      html += `${product.name} <input type="number" min="0" value="0" data-product="${product.name}" class="product-select"/><br>`;
+    });
+
+    html += `<button class="delete-btn" onclick="removeParticipant(${participantId})">Hapus</button>`;
+    container.innerHTML = html;
+    document.getElementById("participants").appendChild(container);
+  }
+
+  function removeParticipant(id) {
+    const el = document.querySelector(`.participant[data-id="${id}"]`);
+    if (el) el.remove();
+  }
+
+  function calculateSplit() {
+    const productList = getProductList();
+    const participants = document.querySelectorAll(".participant");
+    const productTotals = {};
+    const productActual = {};
+    productList.forEach(p => {
+      productTotals[p.name] = 0;
+      productActual[p.name] = p.quantity;
+    });
+
+    participants.forEach(p => {
+      p.querySelectorAll(".product-select").forEach(s => {
+        const name = s.getAttribute("data-product");
+        productTotals[name] += parseInt(s.value) || 0;
+      });
+    });
+
+    const participantResults = [];
+
+    participants.forEach(p => {
+      const name = p.querySelector(".participant-name").value || "Tanpa Nama";
+      const selects = p.querySelectorAll(".product-select");
+      let subtotal = 0;
+      let purchasedProducts = [];
+
+      selects.forEach(s => {
+        const pname = s.getAttribute("data-product");
+        const qty = parseInt(s.value) || 0;
+        const product = productList.find(pr => pr.name === pname);
+        const totalQty = productTotals[pname];
+        const actualQty = productActual[pname];
+        const totalPrice = product.price * actualQty;
+        const perUnitPrice = totalQty === 0 ? 0 : totalPrice / totalQty;
+        subtotal += perUnitPrice * qty;
+
+        if (qty > 0) {
+          purchasedProducts.push({ product: pname, quantity: qty });
+        }
+      });
+
+      participantResults.push({ name, subtotal: Math.round(subtotal), purchasedProducts });
+    });
+
+    const grandTotal = splitData.summary["Grand Total"];
+    let resultHtml = `<h3>Hasil Split:</h3>`;
+    let totalCheck = 0;
+
+    participantResults.forEach(p => {
+      resultHtml += `<strong>${p.name}: Rp ${p.subtotal.toLocaleString()}<strong><br>`;
+      resultHtml += `<strong>Produk yang dibayar:</strong><br>`;
+      p.purchasedProducts.forEach(product => {
+        resultHtml += `- ${product.product} x${product.quantity}<br>`;
+      });
+      totalCheck += p.subtotal;
+      `<br> <br>`
+    });
+
+    resultHtml += `<br><strong>Total Tagihan: Rp ${grandTotal.toLocaleString()}</strong><br>`;
+    resultHtml += `<strong>Total Split: Rp ${totalCheck.toLocaleString()}</strong><br>`;
+
+    if (totalCheck < grandTotal) {
+      resultHtml += `<span style="color:red;">Kurang Rp ${(grandTotal - totalCheck).toLocaleString()}</span>`;
+    } else if (totalCheck > grandTotal) {
+      resultHtml += `<span style="color:orange;">Kelebihan Rp ${(totalCheck - grandTotal).toLocaleString()}</span>`;
+    } else {
+      resultHtml += `<span style="color:green;">Total sesuai</span>`;
+    }
+
+    document.getElementById("totalResult").innerHTML = resultHtml;
+  }
+</script>
+
+</body>
+</html>

@@ -14,7 +14,9 @@ from django.shortcuts import render
 def upload_Home(request):
     return render(request, 'ocr_app/Home.html') 
 def upload_Struk(request):
-    return render(request, 'ocr_app/Struk.html') 
+    return render(request, 'ocr_app/Struk.html')
+def Split_Bill(request):
+    return render(request, 'ocr_app/Split.html')  
 def upload_Bensin(request):
     return render(request, 'ocr_app/Bensin.html') 
     
@@ -481,7 +483,7 @@ class Bensin(APIView):
         start_y, end_y = int(h * y_start), int(h * y_end)
         cropped_image = image[start_y:end_y, start_x:end_x]
 
-        temp_crop_path = "temp_cropped.jpg"
+        temp_crop_path = "Crop/temp_cropped_Bensin.jpg"
         cv2.imwrite(temp_crop_path, cropped_image)
 
         results = self.ocr.ocr(temp_crop_path, cls=False)
@@ -745,7 +747,7 @@ class Struk(APIView):
         start_y, end_y = int(h * y_start), int(h * y_end)
         cropped_image = image[start_y:end_y, start_x:end_x]
 
-        temp_crop_path = "temp_cropped.jpg"
+        temp_crop_path = "Crop/temp_cropped_Bill.jpg"
         cv2.imwrite(temp_crop_path, cropped_image)
 
         results = self.ocr.ocr(temp_crop_path, cls=False)
@@ -900,7 +902,7 @@ class Struk(APIView):
                     transaksi["Biaya Layanan"] = int(nilai2) 
 
             # Lainnya
-            elif any(keyword in body2[i].lower() for keyword in ["lainnya", "miscellaneous", "other", "tambahan", "voucher", "coupon", "poin", "promo", "vc", "anda hemat"]):
+            elif any(keyword in body2[i].lower() for keyword in ["lainnya", "miscellaneous", "other", "tambahan", "voucher", "coupon", "poin", "promo", "vc" ]):
                 nilai1 = self.get_valid_number(body2, i + 1)
                 nilai2 = self.get_valid_number(body2, i + 2)
                 def is_valid_amount(value):
@@ -911,7 +913,7 @@ class Struk(APIView):
                     transaksi["lainnya"] = transaksi.get("Lainnya", 0) + int(nilai2.replace(",", "").replace(".", ""))
 
             # Diskon
-            elif any(keyword in body2[i].lower() for keyword in ["diskon", "disc","discount", "potongan", "total discount"]):
+            elif any(keyword in body2[i].lower() for keyword in ["diskon", "disc","discount", "potongan", "total discount", "anda hemat"]):
                 nilai1 = self.get_valid_number(body2, i + 1)
                 nilai2 = self.get_valid_number(body2, i + 2)
                 def is_valid_amount(value):

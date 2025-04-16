@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCR Struk</title>
+    <title>Struk Bensin</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -82,14 +82,23 @@
         <img id="preview" src="" alt="Preview Gambar">
         <div class="result-container" id="resultContainer">
             <div id="summary"></div>
-            <button id="saveButton" style="display:none;">Simpan</button>
+            <button id="saveButton" style="display:none;">Selesai</button>
         </div>
     </div>
     <button id="editButton" style="display:none;">Edit</button>
+    <button id="splitButton" style="display:none;">Splitbill</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
-    
+
 <script>
+    function setEditable(state) {
+        const editableElements = document.querySelectorAll('.editable');
+        editableElements.forEach(el => {
+            el.contentEditable = state;
+            el.style.border = state ? '1px dashed black' : 'none';
+        });
+    }
+
     document.getElementById('uploadButton').addEventListener('click', function () {
         const fileInput = document.getElementById('fileInput');
         const file = fileInput.files[0];
@@ -118,7 +127,6 @@
         })
         .then(response => response.json())
         .then(data => {
-            console.log("Response dari server:", data); 
             function makeEditable(value) {
                 return `<span class="editable" contenteditable="true">${value}</span>`;
             }
@@ -126,7 +134,6 @@
             document.getElementById('saveButton').style.display = "block";
             document.getElementById('downloadButton').style.display = "none"; 
 
-            // Menampilkan ringkasan
             document.getElementById('summary').innerHTML = `
                 <p><strong>Nama SPBU:</strong> ${makeEditable(data["Nama SPBU"])}</p>
                 <p><strong>Tanggal:</strong> ${makeEditable(data["Tanggal"])}</p>
@@ -136,6 +143,8 @@
                 <p><strong>Volume:</strong> ${makeEditable(data["Volume"])}</p>
                 <p><strong>Total Harga:</strong> ${makeEditable(data["Total Harga"])}</p>
             `;
+
+            setEditable(true);
         })
         .catch(error => {
             console.error('Error Fetching:', error);
@@ -144,82 +153,73 @@
     });
 
     document.getElementById('saveButton').addEventListener('click', function () {
-        // Hilangkan tombol tambah baris dan simpan
         document.getElementById('saveButton').style.display = "none";
 
-        // Tampilkan tombol unduh setelah penyimpanan
+        // Nonaktifkan semua field editable
+        setEditable(false);
+
+        // Tampilkan tombol unduh dan edit
         document.getElementById('editButton').style.display = "block";
+        document.getElementById('splitButton').style.display = "block";
         document.getElementById('downloadButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "block";
     });
 
     document.getElementById('editButton').addEventListener('click', function () {
-        // Tampilkan tombol tambah baris dan simpan
         document.getElementById('saveButton').style.display = "block";
-
-        // Sembunyikan tombol Edit dan Unduh
         document.getElementById('editButton').style.display = "none";
+        document.getElementById('splitButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "none";
         document.getElementById('downloadButton').style.display = "none";
 
+        // Aktifkan kembali field editable
+        setEditable(true);
     });
 
     document.getElementById('downloadButton').addEventListener('click', function () {
         const resultContainer = document.getElementById('resultContainer');
-
-        const spbuName = summaryData["Nama SPBU"];
-        const fileName = `Hasil_Struk_${spbuName}.png`;
+        const spbuName = document.querySelector("#summary p span")?.textContent || "SPBU";
 
         html2canvas(resultContainer).then(canvas => {
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
-            link.download = fileName;
+            link.download = `Hasil_Struk_${spbuName}.png`;
             link.click();
         });
     });
 
     document.getElementById('downloadExcelButton').addEventListener('click', function () {
+        let summaryElements = document.querySelectorAll("#summary p span");
+        
+        let summaryData = {
+            "Nama SPBU": summaryElements[0]?.textContent || "",
+            "Tanggal": summaryElements[1]?.textContent || "",
+            "Produk": summaryElements[2]?.textContent || "",
+            "Nominal": summaryElements[3]?.textContent || "",
+            "Volume": summaryElements[4]?.textContent || "",
+            "Total Harga": summaryElements[5]?.textContent || "",
+        };
 
-    // **Ambil informasi tambahan**
-    let summaryElements = document.querySelectorAll("#summary p span");
-    
-    let summaryData = {
-        "Nama SPBU": summaryElements[0]?.textContent || "",
-        "Tanggal": summaryElements[1]?.textContent || "",
-        "Produk": summaryElements[2]?.textContent || "",
-        "Nominal": summaryElements[3]?.textContent || "",
-        "Volume": summaryElements[4]?.textContent || "",
-        "Total Harga": summaryElements[5]?.textContent || "",
-    };
+        let sumData = [
+            ["Nama SPBU", summaryData["Nama SPBU"]],
+            ["Tanggal", summaryData["Tanggal"]],
+            ["Produk", summaryData["Produk"]],
+            ["Nominal", summaryData["Nominal"]],
+            ["Volume", summaryData["Volume"]],
+            ["Total Harga", summaryData["Total Harga"]],
+            [""],
+        ];
 
-    let sumData = [
-        ["Nama SPBU", summaryData["Nama SPBU"]],
-        ["Tanggal", summaryData["Tanggal"]],
-        ["Produk", summaryData["Produk"]],
-        ["Nominal", summaryData["Nominal"]],
-        ["Volume", summaryData["Volume"]],
-        ["Total Harga", summaryData["Total Harga"]],
-        [""], // Baris kosong sebagai pemisah
-    ];
+        let FinalData = [...sumData];
 
-    // Pastikan tabel tidak kosong sebelum ditambahkan
-        FinalData = [...sumData];
+        let newWs = XLSX.utils.aoa_to_sheet(FinalData);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, newWs, "Data Struk");
 
-    let newWs = XLSX.utils.aoa_to_sheet(FinalData);
-    
-    // **Buat workbook dan tambahkan sheet baru**
-    let wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, newWs, "Data Struk");
-
-    const spbuName = summaryData["Nama SPBU"];
-    const fileName = `Data_Struk_${spbuName}.xlsx`;
-    // **Simpan file Excel**
-    XLSX.writeFile(wb, fileName);
-});
-
-
+        const fileName = `Data_Struk_${summaryData["Nama SPBU"]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    });
 </script>
 
 </body>
-
 </html>
