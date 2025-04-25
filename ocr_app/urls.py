@@ -10,6 +10,10 @@ from .views import upload_Struk
 from .views import upload_Bensin
 from .views import upload_Home
 from .views import Split_Bill
+<<<<<<< Updated upstream
+=======
+from .views import save_struk
+>>>>>>> Stashed changes
 
 urlpatterns = [
     path("Bill/", Bill.as_view(), name="Bill"),
@@ -22,6 +26,10 @@ urlpatterns = [
     path('', upload_Home, name='upload_Home'),
     path('upload-struk/', upload_Struk, name='upload_Struk'),
     path('upload-struk/split-bill/', Split_Bill, name='Split_Bill'),
+<<<<<<< Updated upstream
+=======
+    path('save-struk/', save_struk, name='save_struk'),
+>>>>>>> Stashed changes
     path('upload-bensin/', upload_Bensin, name='upload_bensin'),
 ]
 

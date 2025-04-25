@@ -7,9 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
-from .models import UploadedImage
+from .models import UploadedImage, Struk, Produk
+from .models import Struk, Produk
 from .serializers import ImageSerializer
 from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 def upload_Home(request):
     return render(request, 'ocr_app/Home.html') 
@@ -19,6 +22,52 @@ def Split_Bill(request):
     return render(request, 'ocr_app/Split.html')  
 def upload_Bensin(request):
     return render(request, 'ocr_app/Bensin.html') 
+
+@csrf_exempt
+def save_struk(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            print("data",data)
+
+            nama_toko = data.get("Nama Toko", "")
+            tanggal = data.get("Tanggal", "")
+
+            subtotal = data.get("Subtotal", "")
+            pajak = data.get("Pajak", "")
+            biaya_layanan = data.get("Biaya Layanan", "")
+            diskon = data.get("Diskon", "")
+            lainnya = data.get("Lainnya", "")
+            grand_total = data.get("Grand Total", "")
+
+            # Simpan struk
+            struk = Struk.objects.create(
+                nama_toko=nama_toko,
+                tanggal=tanggal,
+                subtotal=subtotal,
+                pajak=pajak,
+                biaya_layanan=biaya_layanan,
+                diskon=diskon,
+                lainnya=lainnya,
+                grand_total=grand_total
+            )
+
+            # Simpan produk-produk terkait
+            for item in data.get("Data", {}).get("Produk", []):
+                Produk.objects.create(
+                    struk=struk,
+                    nama=item.get("Nama", ""),
+                    jumlah=item.get("Jumlah", ""),
+                    harga=item.get("Harga", ""),
+                    jumlah_harga=item.get("Jumlah Harga", "")
+                )
+
+            return JsonResponse({"status": "success", "message": "Data struk berhasil disimpan."})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"})
+    else:
+        return JsonResponse({"status": "error", "message": "Metode tidak diizinkan."})
     
 class Bill(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -761,7 +810,6 @@ class Struk(APIView):
             return tanggal  
         return None 
 
-
     def get_valid_number(self, body, index):
         if index < len(body):
             text = body[index].strip()
@@ -950,9 +998,7 @@ class Struk(APIView):
             (r"x?(\d[\d.,]*)=", None, "harga"),  # Mencari pola seperti "x7000=" atau "7000=" -> harga = 7000
             (r"x([\d.,]+)@", None, "harga"),  # Mencari pola seperti "x7000@" -> harga = 7000
             (r"(\d+)\s*x\s*Rp\s*([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "25 x Rp 7.000" -> jumlah = 25, harga = 7.000
-            (r"(\d+)X Rp ([\d\.]+)", "jumlah", "harga"), # Mencari pola seperti "25x Rp 7.000" -> jumlah = 25, harga = 7.000
-            (r"(\d+)X Rp([\d\.]+)", "jumlah", "harga"), # Mencari pola seperti "25x Rp7.000" -> jumlah = 25, harga = 7.000
-            (r"x(\d+)Rp([\d.,]+)", "jumlah", "harga"),  # Mencari pola seperti "x25Rp7000" -> jumlah = 25, harga = 7.000
+            (r"(\d+)\s*X\s*Rp\s*([\d\.]+)", "jumlah", "harga"), # Mencari pola seperti "25x Rp 7.000" -> jumlah = 25, harga = 7.000
             (r"@([\d.,]+)x", None, "harga"),  # Mencari pola seperti "@7000x" -> harga = 7000
             (r"([\d.,]+)x", "jumlah", None),  # Mencari pola seperti "1x" -> jumlah = 1
         ]
@@ -1092,10 +1138,6 @@ class Struk(APIView):
 
             if not jumlah and harga and jumlah_harga:
                 jumlah = int(jumlah_harga)// int(harga) if int(jumlah_harga) >= int(harga) else None
-            
-            # ojumlah = jumlah
-            # clearjumlah = self.clear_jumlah(ojumlah)
-            # jumlah = clearjumlah
 
             valid_produk = (
                 nama_produk and any(c.isalpha() for c in nama_produk)

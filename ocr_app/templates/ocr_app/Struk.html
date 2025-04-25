@@ -91,15 +91,17 @@
                 <tbody></tbody>
             </table>
             <button id="addRowButton" style="display:none;">Tambah Baris</button>
-            <button id="saveButton" style="display:none;">Selesai</button>
+            <button id="doneButton" style="display:none;">Selesai</button>
 
             <div id="summary"></div>
         </div>
     </div>
+    <p id="text" style="display:none;"> Untuk melakukan Split Bill di harapkan untuk mengunduh Hasil excel terlebih dahulu</p>
     <button id="editButton" style="display:none;">Edit</button>
     <button id="splitButton" style="display:none;"onclick="window.location.href='split-bill'">SplitBill</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
+    <button id="saveButton" style="display:none;">Save Hasil</button>
     
 <script>
     document.getElementById('uploadButton').addEventListener('click', function () {
@@ -146,8 +148,7 @@
 
             document.getElementById('tableOutput').style.display = "table";
             document.getElementById('addRowButton').style.display = "block";
-            document.getElementById('saveButton').style.display = "block";
-            document.getElementById('downloadButton').style.display = "none";
+            document.getElementById('doneButton').style.display = "block";
 
             document.getElementById('summary').innerHTML = `
                 <p><strong>Subtotal:</strong> ${makeEditable(data["Subtotal"])}</p>
@@ -184,9 +185,9 @@
         addRowToTable();
     });
 
-    document.getElementById('saveButton').addEventListener('click', function () {
+    document.getElementById('doneButton').addEventListener('click', function () {
         document.getElementById('addRowButton').style.display = "none";
-        document.getElementById('saveButton').style.display = "none";
+        document.getElementById('doneButton').style.display = "none";
 
         // Nonaktifkan semua elemen editable
         document.querySelectorAll('.editable').forEach(span => {
@@ -207,16 +208,20 @@
         document.getElementById('splitButton').style.display = "block";
         document.getElementById('downloadButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "block";
+        document.getElementById('saveButton').style.display = "block";
+        document.getElementById('text').style.display = "block";
     });
 
     document.getElementById('editButton').addEventListener('click', function () {
         document.getElementById('addRowButton').style.display = "block";
-        document.getElementById('saveButton').style.display = "block";
+        document.getElementById('doneButton').style.display = "block";
 
         document.getElementById('editButton').style.display = "none";
         document.getElementById('splitButton').style.display = "none";
         document.getElementById('downloadExcelButton').style.display = "none";
         document.getElementById('downloadButton').style.display = "none";
+        document.getElementById('saveButton').style.display = "none";
+        document.getElementById('text').style.display = "none";
 
         let table = document.getElementById("tableOutput");
         let thead = table.querySelector("thead tr");
@@ -302,6 +307,63 @@
         const fileName = `Data_Struk_${namaToko}.xlsx`;
         XLSX.writeFile(wb, fileName);
     });
+    document.getElementById('saveButton').addEventListener('click', function () {
+        const namaToko = document.querySelector("#output p strong")?.textContent || "";
+        const tanggal = document.querySelector("#output p:nth-child(3)")?.textContent || "";
+
+        const rows = Array.from(document.querySelectorAll("#tableOutput tbody tr"));
+        const produk = rows.map(row => {
+            const cells = row.querySelectorAll("td span");
+            return {
+                Nama: cells[0]?.textContent.trim() || "",
+                Jumlah: cells[1]?.textContent.trim() || "",
+                Harga: cells[2]?.textContent.trim() || "",
+                "Jumlah Harga": cells[3]?.textContent.trim() || ""
+            };
+        });
+
+        const summarySpans = document.querySelectorAll("#summary span");
+        const summary = {
+            Subtotal: summarySpans[0]?.textContent.trim() || "",
+            Pajak: summarySpans[1]?.textContent.trim() || "",
+            "Biaya Layanan": summarySpans[2]?.textContent.trim() || "",
+            Diskon: summarySpans[3]?.textContent.trim() || "",
+            Lainnya: summarySpans[4]?.textContent.trim() || "",
+            "Grand Total": summarySpans[5]?.textContent.trim() || ""
+        };
+
+        const dataToSave = {
+            "Nama Toko": namaToko,
+            "Tanggal": tanggal,
+            "Data": {
+                Produk: produk
+            },
+            ...summary
+        };
+
+        fetch("http://127.0.0.1:8000/page/save-struk/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(dataToSave)
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("Gagal menyimpan data.");
+            }
+            return res.json();
+        })
+        .then(response => {
+            alert("Data berhasil disimpan!");
+            console.log(response);
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Terjadi kesalahan saat menyimpan data.");
+        });
+    });
+
 </script>
 </body>
 </html>
