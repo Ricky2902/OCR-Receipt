@@ -86,7 +86,6 @@
         </div>
     </div>
     <button id="editButton" style="display:none;">Edit</button>
-    <button id="splitButton" style="display:none;">Splitbill</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
 
@@ -160,7 +159,6 @@
 
         // Tampilkan tombol unduh dan edit
         document.getElementById('editButton').style.display = "block";
-        document.getElementById('splitButton').style.display = "block";
         document.getElementById('downloadButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "block";
     });
@@ -168,7 +166,6 @@
     document.getElementById('editButton').addEventListener('click', function () {
         document.getElementById('saveButton').style.display = "block";
         document.getElementById('editButton').style.display = "none";
-        document.getElementById('splitButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "none";
         document.getElementById('downloadButton').style.display = "none";
 

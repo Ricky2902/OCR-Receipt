@@ -13,6 +13,8 @@ from .serializers import ImageSerializer
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
+
 
 def upload_Home(request):
     return render(request, 'ocr_app/Home.html') 
@@ -507,12 +509,20 @@ class Bensin(APIView):
         if serializer.is_valid():
             uploaded_image = serializer.save()
             image_path = uploaded_image.image.path
-
+            
             # Proses OCR setelah menyimpan gambar
             extracted_data = self.process_image(image_path)
             return Response(extracted_data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request, *args, **kwargs):
+        # Example of retrieving data from some database or service
+        data = {
+            "message": "Data fetched successfully",
+            "example_field": "This could be some OCR data or details"
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
     def process_image(self, image_path):
         image = cv2.imread(image_path)
