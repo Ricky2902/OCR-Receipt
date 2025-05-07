@@ -68,6 +68,7 @@
     <p>Diharapkan Mengupload Gambar yang Bersih dan Jelas serta Sejajar dan Presisi !!!</p>
     
     <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
         <input type="file" id="fileInput" name="image" accept="image/*">
         <br><br>
         <button type="button" id="uploadButton">Unggah</button>
@@ -96,14 +97,30 @@
             <div id="summary"></div>
         </div>
     </div>
-    <p id="text" style="display:none;"> Untuk melakukan Split Bill di harapkan untuk mengunduh Hasil excel terlebih dahulu</p>
+    <p id="text" style="display:none;"> Untuk melakukan Split Bill di harapkan untuk Save hasil</p>
     <button id="editButton" style="display:none;">Edit</button>
+    <button id="saveButton" style="display:none;">Save Hasil</button>
     <button id="splitButton" style="display:none;"onclick="window.location.href='split-bill'">SplitBill</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
     <button id="saveButton" style="display:none;">Save Hasil</button>
     
 <script>
+     function getCookie(name) {
+    let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Apakah ini cookie yang kita cari?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
     document.getElementById('uploadButton').addEventListener('click', function () {
         const fileInput = document.getElementById('fileInput');
         const file = fileInput.files[0];
@@ -124,9 +141,15 @@
         };
         reader.readAsDataURL(file);
 
+         // Kirim data ke backend Django
+         const csrftoken = getCookie('csrftoken');
+
         fetch('http://127.0.0.1:8000/page/Struk/', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
         })
         .then(response => response.json())
         .then(data => {
@@ -341,7 +364,7 @@
             ...summary
         };
 
-        fetch("http://127.0.0.1:8000/page/save-struk/", {
+        fetch("/page/save-struk/", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

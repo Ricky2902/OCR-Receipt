@@ -73,6 +73,7 @@
     <p>Diharapkan Mengupload Gambar yang Bersih dan Jelas serta Sejajar dan Presisi !!!</p>
     
     <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
         <input type="file" id="fileInput" name="image" accept="image/*">
         <br><br>
         <button type="button" id="uploadButton">Unggah</button>
@@ -90,6 +91,21 @@
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
 
 <script>
+    function getCookie(name) {
+    let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Apakah ini cookie yang kita cari?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
     function setEditable(state) {
         const editableElements = document.querySelectorAll('.editable');
         editableElements.forEach(el => {
@@ -120,9 +136,14 @@
         reader.readAsDataURL(file);
 
         // Kirim data ke backend Django
-        fetch('http://127.0.0.1:8000/page/Bensin/', {
+        const csrftoken = getCookie('csrftoken');
+
+        fetch(`${window.location.origin}/page/Bensin/`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
         })
         .then(response => response.json())
         .then(data => {

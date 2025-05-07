@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UploadedImage, Struk, Produk
+from .models import UploadedImage, DataStruk, DataProduk
 
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -8,14 +8,14 @@ class ImageSerializer(serializers.ModelSerializer):
 
 class ProdukSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Produk
+        model = DataProduk
         fields = ['id', 'nama', 'jumlah', 'harga', 'jumlah_harga']
 
 class StrukSerializer(serializers.ModelSerializer):
     produk = ProdukSerializer(many=True)  # karena related_name='produk' di ForeignKey
 
     class Meta:
-        model = Struk
+        model = DataStruk
         fields = [
             'id', 'nama_toko', 'tanggal', 'subtotal', 'pajak',
             'biaya_layanan', 'diskon', 'lainnya', 'grand_total', 'produk'
@@ -23,7 +23,7 @@ class StrukSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         produk_data = validated_data.pop('produk')
-        struk = Struk.objects.create(**validated_data)
+        struk = DataStruk.objects.create(**validated_data)
         for produk in produk_data:
-            Produk.objects.create(struk=struk, **produk)
+            DataProduk.objects.create(struk=struk, **produk)
         return struk

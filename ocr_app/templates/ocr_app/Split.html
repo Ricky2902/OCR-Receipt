@@ -19,40 +19,96 @@
 </head>
 <body>
 
-<h2>Split Bill System</h2>
-<p id="storeInfo"></p>
-
-<input type="file" id="fileInput" />
-
-<div class="container">
-    <h3>Daftar Produk</h3>
-    <table id="productTable">
-      <thead>
-        <tr>
-          <th>Nama Produk</th>
-          <th>Jumlah</th>
-          <th>Harga</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <h2>Split Bill System</h2>
+  <p id="storeInfo"></p>
   
-    <button onclick="addParticipant()">Tambah Partisipan</button>
-    <div id="participants"></div>
-  
-    <div class="button">
-      <button onclick="calculateSplit()">Hitung Split</button>
-    </div>
-    <div class="total" id="totalResult"></div>
+  <!-- Dropdown untuk memilih ID struk -->
+  <div>
+    <label for="strukSelect">Pilih ID Struk:</label>
+    <select id="strukSelect" onchange="fetchStrukData()">
+      <option value="">Pilih ID Struk</option>
+      <!-- Option struk akan diisi secara dinamis -->
+    </select>
   </div>
-
-<pre id="output" style="white-space: pre-wrap;"></pre>
+  
+  <div class="container">
+      <h3>Daftar Produk</h3>
+      <table id="productTable">
+        <thead>
+          <tr>
+            <th>Nama Produk</th>
+            <th>Jumlah</th>
+            <th>Harga</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    
+      <button onclick="addParticipant()">Tambah Partisipan</button>
+      <div id="participants"></div>
+    
+      <div class="button">
+        <button onclick="calculateSplit()">Hitung Split</button>
+      </div>
+      <div class="total" id="totalResult"></div>
+  </div>
+  
+  <pre id="output" style="white-space: pre-wrap;"></pre>  
 
 <script>
+  // Memuat data ID struk dari API dan menampilkannya di dropdown
+  function loadStrukIds() {
+  fetch("http://127.0.0.1:8000/page/struk-list/")
+    .then(res => res.json())
+    .then(data => {
+      // Urutkan berdasarkan id terbesar (terbaru) dan ambil 10 teratas
+      const sortedData = data.sort((a, b) => b.id - a.id).slice(0, 10);
+
+      console.log(sortedData);
+      const strukSelect = document.getElementById("strukSelect");
+
+      // Kosongkan dulu isi select-nya agar tidak duplikat saat load ulang
+      strukSelect.innerHTML = '<option value="">Pilih ID Struk</option>';
+
+      sortedData.forEach(struk => {
+        const option = document.createElement("option");
+        option.value = struk.id;
+        option.textContent = `Struk: ${struk.nama_toko}`;
+        strukSelect.appendChild(option);
+      });
+    })
+    .catch(err => console.error("Error loading struk IDs:", err));
+}
+
+
+  function fetchStrukData() {
+  const strukId = document.getElementById("strukSelect").value;
+  if (!strukId) {
+    alert("Pilih ID struk terlebih dahulu!");
+    return;
+  }
+
+  fetch(`http://127.0.0.1:8000/page/struk-terbaru/${strukId}/`)
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);  // Log data untuk memeriksa respons API
+      splitData.toko = data.toko;
+      splitData.tanggal = data.tanggal;
+      splitData.produk = data.produk;
+      splitData.summary = data.summary;
+      renderTable();
+      renderStoreInfo();
+    })
+    .catch(err => {
+      document.getElementById("storeInfo").innerText = "Gagal memuat data dari server.";
+      console.error("Error:", err);
+    });
+  }
+
   let splitData = {
-    toko: "TLOGOMAS 44 MALANG 08113336422",
-    tanggal: "21/01/22",
+    toko: "",
+    tanggal: "",
     produk: [],
     summary: {
       Subtotal: 0,
@@ -64,39 +120,11 @@
     }
   };
 
-  const fileInput = document.getElementById('fileInput');
-  fileInput.addEventListener('change', handleFile, false);
+  document.addEventListener("DOMContentLoaded", () => {
+    loadStrukIds();
+  });
 
-  function handleFile(e) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-
-      let headerIndex = rows.findIndex(r => r[0]?.toString().trim() === "Nama Produk");
-      splitData.produk = [];
-
-      if (headerIndex !== -1) {
-        for (let i = headerIndex + 1; i < rows.length; i++) {
-          const [nama, jumlah, harga, total] = rows[i];
-          if (!nama) break;
-          splitData.produk.push({ namaProduk: nama, jumlah: parseInt(jumlah), harga: parseInt(harga), jumlahHarga: parseInt(total) });
-        }
-      }
-
-      const kategori = ["Subtotal", "Pajak", "Biaya Layanan", "Diskon", "Lainnya", "Grand Total"];
-      rows.forEach(([key, val]) => {
-        if (kategori.includes(key) && val) splitData.summary[key] = parseInt(val);
-      });
-
-      renderTable();
-      renderStoreInfo();
-    };
-    reader.readAsArrayBuffer(e.target.files[0]);
-  }
-
+  // Fungsi untuk merender tabel produk
   function renderTable() {
     const tbody = document.querySelector("#productTable tbody");
     tbody.innerHTML = "";
@@ -112,6 +140,7 @@
     });
   }
 
+  // Fungsi untuk merender informasi toko
   function renderStoreInfo() {
     document.getElementById("storeInfo").innerHTML = ` 
       <strong>Nama Toko:</strong> ${splitData.toko} <br>
@@ -120,6 +149,7 @@
     `;
   }
 
+  // Mengambil daftar produk
   function getProductList() {
     return splitData.produk.map(p => ({
       name: p.namaProduk,
@@ -128,6 +158,7 @@
     }));
   }
 
+  // Fungsi untuk menambahkan partisipan
   function addParticipant() {
     const productList = getProductList();
     const participantId = Date.now();
@@ -147,11 +178,13 @@
     document.getElementById("participants").appendChild(container);
   }
 
+  // Fungsi untuk menghapus partisipan
   function removeParticipant(id) {
     const el = document.querySelector(`.participant[data-id="${id}"]`);
     if (el) el.remove();
   }
 
+  // Fungsi untuk menghitung pembagian tagihan
   function calculateSplit() {
     const productList = getProductList();
     const participants = document.querySelectorAll(".participant");
@@ -170,7 +203,6 @@
     });
 
     const participantResults = [];
-
     participants.forEach(p => {
       const name = p.querySelector(".participant-name").value || "Tanpa Nama";
       const selects = p.querySelectorAll(".product-select");
@@ -195,31 +227,55 @@
       participantResults.push({ name, subtotal: Math.round(subtotal), purchasedProducts });
     });
 
+    const subtotalSum = splitData.summary["Subtotal"];
     const grandTotal = splitData.summary["Grand Total"];
-    let resultHtml = `<h3>Hasil Split:</h3>`;
-    let totalCheck = 0;
+    const pajak = splitData.summary["Pajak"] || 0;
+    const layanan = splitData.summary["Biaya Layanan"] || 0;
+    const diskon = splitData.summary["Diskon"] || 0;
+    const lainnya = splitData.summary["Lainnya"] || 0;
 
-    participantResults.forEach(p => {
-      resultHtml += `<strong>${p.name}: Rp ${p.subtotal.toLocaleString()}<strong><br>`;
-      resultHtml += `<strong>Produk yang dibayar:</strong><br>`;
-      p.purchasedProducts.forEach(product => {
-        resultHtml += `- ${product.product} x${product.quantity}<br>`;
-      });
-      totalCheck += p.subtotal;
-      `<br> <br>`
-    });
+    // Dua kemungkinan lainnya: dianggap tambahan atau potongan
+    const kemungkinanTambah = subtotalSum + pajak + layanan + lainnya - diskon;
+    const kemungkinanKurang = subtotalSum + pajak + layanan - lainnya - diskon;
 
-    resultHtml += `<br><strong>Total Tagihan: Rp ${grandTotal.toLocaleString()}</strong><br>`;
-    resultHtml += `<strong>Total Split: Rp ${totalCheck.toLocaleString()}</strong><br>`;
+    const expectedGrand = Math.abs(kemungkinanTambah - grandTotal) <= Math.abs(kemungkinanKurang - grandTotal)
+      ? kemungkinanTambah
+      : kemungkinanKurang;
 
-    if (totalCheck < grandTotal) {
-      resultHtml += `<span style="color:red;">Kurang Rp ${(grandTotal - totalCheck).toLocaleString()}</span>`;
-    } else if (totalCheck > grandTotal) {
-      resultHtml += `<span style="color:orange;">Kelebihan Rp ${(totalCheck - grandTotal).toLocaleString()}</span>`;
+    const selisih = grandTotal - expectedGrand;
+    const lainnyaLabel = expectedGrand === kemungkinanTambah ? "(Tambahan)" : "(Potongan)";
+    let adjustment = 0;
+    let keterangan = "";
+
+    if (Math.abs(selisih) <= 1) {
+      adjustment = 0;
+      keterangan = "(Tanpa tambahan)";
     } else {
-      resultHtml += `<span style="color:green;">Total sesuai</span>`;
+      adjustment = Math.round((grandTotal - subtotalSum) / participants.length);
+      keterangan = "(Termasuk: Pajak, Biaya Layanan, Diskon, Lainnya)";
     }
 
+    let resultHtml = `<h3>Hasil Split ${keterangan}:</h3>`;
+    let totalCheck = 0;
+
+    participantResults.forEach(result => {
+      const total = result.subtotal + adjustment;
+      totalCheck += total;
+
+      resultHtml += `<strong>${result.name}</strong><br>`;
+      result.purchasedProducts.forEach(p => {
+        resultHtml += `${p.product} - ${p.quantity} pcs<br>`;
+      });
+      resultHtml += `<b>Total:</b> Rp ${total.toLocaleString()}<br><br>`;
+    });
+
+    resultHtml += `<b>Subtotal:</b> Rp ${subtotalSum.toLocaleString()}<br>`;
+    if (diskon > 0) resultHtml += `<b>Diskon:</b> Rp ${diskon.toLocaleString()}<br>`;
+    if (lainnya > 0) resultHtml += `<b>Lainnya:</b> Rp ${lainnya.toLocaleString()} ${lainnyaLabel}<br>`;
+    if (pajak > 0) resultHtml += `<b>Pajak:</b> Rp ${pajak.toLocaleString()}<br>`;
+    if (layanan > 0) resultHtml += `<b>Biaya Layanan:</b> Rp ${layanan.toLocaleString()}<br>`;
+    resultHtml += `<b>Grand Total:</b> Rp ${grandTotal.toLocaleString()}<br>`;
+    resultHtml += `<b>Total Semua Partisipan:</b> Rp ${totalCheck.toLocaleString()}`;
     document.getElementById("totalResult").innerHTML = resultHtml;
   }
 </script>

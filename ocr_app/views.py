@@ -7,14 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
-from .models import UploadedImage, Struk, Produk
-from .models import Struk, Produk
-from .serializers import ImageSerializer
+from .models import UploadedImage, DataStruk, DataProduk
+from .serializers import ImageSerializer, StrukSerializer
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.middleware.csrf import get_token
-
+from rest_framework.decorators import api_view
 
 def upload_Home(request):
     return render(request, 'ocr_app/Home.html') 
@@ -43,7 +41,7 @@ def save_struk(request):
             grand_total = data.get("Grand Total", "")
 
             # Simpan struk
-            struk = Struk.objects.create(
+            struk = DataStruk.objects.create(
                 nama_toko=nama_toko,
                 tanggal=tanggal,
                 subtotal=subtotal,
@@ -56,7 +54,7 @@ def save_struk(request):
 
             # Simpan produk-produk terkait
             for item in data.get("Data", {}).get("Produk", []):
-                Produk.objects.create(
+                DataProduk.objects.create(
                     struk=struk,
                     nama=item.get("Nama", ""),
                     jumlah=item.get("Jumlah", ""),
@@ -70,7 +68,41 @@ def save_struk(request):
             return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"})
     else:
         return JsonResponse({"status": "error", "message": "Metode tidak diizinkan."})
-    
+
+@api_view(['GET'])
+def struk_list(request):
+    struks = DataStruk.objects.all()
+    serializer = StrukSerializer(struks, many=True)
+    return Response(serializer.data)
+ 
+class StrukTerbaruView(APIView):
+    def get(self, request, struk_id):
+        struk = DataStruk.objects.get(id = struk_id)
+        produk = DataProduk.objects.filter(struk_id=struk)
+
+        # Format data untuk JSON
+        data = {
+            "toko": struk.nama_toko,
+            "tanggal": struk.tanggal,
+            "produk": [
+                {
+                    "namaProduk": p.nama,
+                    "jumlah": p.jumlah,
+                    "harga": p.harga,
+                    "jumlahHarga": p.jumlah_harga
+                } for p in produk
+            ],
+            "summary": {
+                "Subtotal": struk.subtotal,
+                "Pajak": struk.pajak,
+                "Biaya Layanan": struk.biaya_layanan,
+                "Diskon": struk.diskon,
+                "Lainnya": struk.lainnya,
+                "Grand Total": struk.grand_total
+            }
+        }
+        return Response(data)
+
 class Bill(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
@@ -266,29 +298,6 @@ class Parkir(APIView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.ocr = PaddleOCR(lang="en")
-
-    def post(self, request, *args, **kwargs):
-        serializer = ImageSerializer(data=request.data)
-        if serializer.is_valid():
-            uploaded_image = serializer.save()
-            image_path = uploaded_image.image.path
-
-            # **Baca gambar dengan OpenCV**
-            image = cv2.imread(image_path)
-            if image is None:
-                return Response({"error": "Gambar tidak ditemukan atau tidak valid."}, status=400)
-            
-            h, w, _ = image.shape  # Dapatkan dimensi gambar
-
-            # header = self.crop_and_ocr(image, w, h, 0, 1, 0, 0)
-            body = self.crop_and_ocr(image, w, h, 0, 1, 0, 1)
-
-            # **Format hasil menjadi JSON**
-            hasil_json = self.format_json(body)
-
-            return Response({"hasil_ocr": hasil_json})
-        
-        return Response(serializer.errors, status=400)
 
     def crop_and_ocr(self, image, w, h, x_start, x_end, y_start, y_end):
         start_x, end_x = int(w * x_start), int(w * x_end)
@@ -516,14 +525,6 @@ class Bensin(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def get(self, request, *args, **kwargs):
-        # Example of retrieving data from some database or service
-        data = {
-            "message": "Data fetched successfully",
-            "example_field": "This could be some OCR data or details"
-        }
-        return Response(data, status=status.HTTP_200_OK)
-
     def process_image(self, image_path):
         image = cv2.imread(image_path)
         if image is None:
