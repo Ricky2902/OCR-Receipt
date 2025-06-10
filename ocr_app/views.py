@@ -18,6 +18,8 @@ def upload_Home(request):
     return render(request, 'ocr_app/Home.html') 
 def upload_Struk(request):
     return render(request, 'ocr_app/Struk.html')
+def upload_Struk3(request):
+    return render(request, 'ocr_app/Struk3.html')
 def Split_Bill(request):
     return render(request, 'ocr_app/Split.html')  
 def upload_Bensin(request):
@@ -770,7 +772,7 @@ class Bensin(APIView):
                 transaksi["Total Harga"] = float(transaksi["Volume"])*transaksi["Nominal"]
         return transaksi
 
-class Struk(APIView):
+class Struk4(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def __init__(self, **kwargs):
@@ -1169,4 +1171,180 @@ class Struk(APIView):
                     "Jumlah Harga": int(sanitize_number_produk(jumlah_harga))
                 })
 
+        return transaksi
+
+class Struk3(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.ocr = PaddleOCR(lang="en")
+
+    def post(self, request, *args, **kwargs):
+        serializer = ImageSerializer(data=request.data)
+        if serializer.is_valid():
+            uploaded_image = serializer.save()
+            image_path = uploaded_image.image.path
+
+            # Proses OCR setelah menyimpan gambar
+            extracted_data = self.process_image(image_path)
+            return Response(extracted_data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def process_image(self, image_path):
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError("Gambar tidak ditemukan atau tidak valid.")
+
+        h, w, _ = image.shape
+        body = self.crop_and_ocr(image, w, h, 0, 1, 0, 1)
+        return self.format_json(body)
+
+    def crop_and_ocr(self, image, w, h, x_start, x_end, y_start, y_end):
+        start_x, end_x = int(w * x_start), int(w * x_end)
+        start_y, end_y = int(h * y_start), int(h * y_end)
+        cropped_image = image[start_y:end_y, start_x:end_x]
+        temp_crop_path = "Crop/temp_cropped_Struk3.jpg"
+        cv2.imwrite(temp_crop_path, cropped_image)
+        results = self.ocr.ocr(temp_crop_path, cls=False)
+        return [entry[1][0] for result in results for entry in result] if results else []
+
+    def sanitize_number(self, text):
+        text = re.sub(r"[^\d]", "", text)
+        return text.strip()
+
+    def format_tanggal(self, input_text):
+        match = re.search(r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{2,4})", input_text)
+        if match:
+            tanggal = match.group(1).replace(".", "/").strip()
+            return tanggal
+        return ""
+
+    def get_nama_toko(self, body):
+        # Ambil baris pertama yang bukan angka sebagai nama toko
+        for line in body:
+            if any(c.isalpha() for c in line):
+                return line
+        return body[0] if body else ""
+
+    def format_json(self, body):
+        print("=== HASIL OCR ===")
+        for idx, line in enumerate(body):
+            print(f"{idx}: {repr(line)}")
+        print("=================")
+    
+        # --- Ambil Nama Toko & Tanggal ---
+        Toko = self.get_nama_toko(body)
+        tanggal = ""
+        for line in body:
+            if re.search(r"\d{1,4}[-/.]\d{1,2}[-/.]\d{2,4}", line):
+                tanggal = self.format_tanggal(line)
+                break
+    
+        transaksi = {
+            "Nama Toko": Toko,
+            "Tanggal": tanggal,
+            "Data": {
+                "Produk": [],
+            },
+            "Subtotal": 0,
+            "Pajak": 0,
+            "Biaya Layanan": 0,
+            "Diskon": 0,
+            "Lainnya": 0,
+            "Grand Total": 0,
+        }
+    
+        # --- Ambil Subtotal, Pajak, dst ---
+        for i, line in enumerate(body):
+            l = line.lower()
+            if any(k in l for k in ["subtotal", "sub total", "sub-total", "sub.ttl", "harga jual"]):
+                transaksi["Subtotal"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+            elif any(k in l for k in ["pajak", "tax", "vat", "gst", "service charge", "ppn", "pb1", "pb"]):
+                transaksi["Pajak"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+            elif any(k in l for k in ["biaya", "charge", "fee", "service fee", "sc", "admin fee", "ongkos", "cost","adm"]):
+                transaksi["Biaya Layanan"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+            elif any(k in l for k in ["lainnya", "miscellaneous", "other", "tambahan", "voucher", "coupon", "poin", "promo", "vc"]):
+                transaksi["Lainnya"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+            elif any(k in l for k in ["diskon", "disc","discount", "potongan", "total discount", "anda hemat"]):
+                transaksi["Diskon"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+            elif any(k in l for k in ["total:","total", "grand total", "total harga", "total belanja", "total pembayaran", "total amount", "jumlah", "total bayar","item", "tntal" ,"iten"]):
+                transaksi["Grand Total"] = int(self.sanitize_number(body[i+1])) if i+1 < len(body) else 0
+    
+        produk_list = []
+        summary_keywords = [
+            "total", "payment", "bayar", "kembali", "cash", "change", "grand", "jumlah", "subtotal", "pajak", "diskon", "service", "admin", "biaya", "lainnya"
+        ]
+        for i, line in enumerate(body):
+            baris = line.strip()
+            # Cari angka besar di akhir baris (jumlah harga)
+            match_total = re.search(r'([\d.,]{4,})\s*$', baris)
+            if match_total:
+                jumlah_harga_str = match_total.group(1)
+                jumlah_harga = int(self.sanitize_number(jumlah_harga_str))
+    
+                # Cek 2 baris sebelumnya untuk pattern produk
+                found = False
+                for offset in [1, 2]:
+                    if i - offset < 0:
+                        continue
+                    prev_line = body[i - offset].strip()
+                    # Skip jika baris sebelumnya mengandung kata summary
+                    if any(k in prev_line.lower() for k in summary_keywords):
+                        continue
+                    # Pattern: nama_barang jumlah
+                    match = re.match(r'(.+)\s+(\d{1,3})$', prev_line)
+                    if match:
+                        nama_produk = match.group(1)
+                        jumlah = int(self.sanitize_number(match.group(2)))
+                        harga = jumlah_harga // jumlah if jumlah else 0
+                        if nama_produk and jumlah and harga > 0 and jumlah_harga > 0:
+                            produk_list.append({
+                                "Nama": nama_produk.strip(),
+                                "Jumlah": jumlah,
+                                "Harga": harga,
+                                "Jumlah Harga": jumlah_harga
+                            })
+                            print(f"Produk ditemukan: {nama_produk}, {jumlah}, {harga}, {jumlah_harga}")
+                            found = True
+                            break
+                    # Pattern: jumlah nama_barang
+                    match = re.match(r'(\d{1,3})\s+(.+)', prev_line)
+                    if match:
+                        jumlah = int(self.sanitize_number(match.group(1)))
+                        nama_produk = match.group(2)
+                        harga = jumlah_harga // jumlah if jumlah else 0
+                        if nama_produk and jumlah and harga > 0 and jumlah_harga > 0:
+                            produk_list.append({
+                                "Nama": nama_produk.strip(),
+                                "Jumlah": jumlah,
+                                "Harga": harga,
+                                "Jumlah Harga": jumlah_harga
+                            })
+                            print(f"Produk ditemukan: {nama_produk}, {jumlah}, {harga}, {jumlah_harga}")
+                            found = True
+                            break
+                # Jika tidak ditemukan pattern, cek baris sebelumnya hanya nama
+                if not found and i - 1 >= 0:
+                    prev_line = body[i - 1].strip()
+                    if not any(k in prev_line.lower() for k in summary_keywords) and any(c.isalpha() for c in prev_line):
+                        nama_produk = prev_line
+                        jumlah = 1
+                        harga = jumlah_harga
+                        produk_list.append({
+                            "Nama": nama_produk.strip(),
+                            "Jumlah": jumlah,
+                            "Harga": harga,
+                            "Jumlah Harga": jumlah_harga
+                        })
+                        print(f"Produk ditemukan (default jumlah=1): {nama_produk}, {jumlah}, {harga}, {jumlah_harga}")
+    
+        transaksi["Data"]["Produk"] = produk_list
+    
+        print("=== PRODUK YANG MASUK ===")
+        for p in transaksi["Data"]["Produk"]:
+            print(p)
+        print("=========================")
+    
         return transaksi

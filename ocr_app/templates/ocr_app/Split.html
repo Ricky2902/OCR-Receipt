@@ -24,9 +24,9 @@
   
   <!-- Dropdown untuk memilih ID struk -->
   <div>
-    <label for="strukSelect">Pilih ID Struk:</label>
+    <label for="strukSelect">Pilih Struk:</label>
     <select id="strukSelect" onchange="fetchStrukData()">
-      <option value="">Pilih ID Struk</option>
+      <option value="">Pilih Struk</option>
       <!-- Option struk akan diisi secara dinamis -->
     </select>
   </div>
@@ -216,11 +216,21 @@
         const totalQty = productTotals[pname];
         const actualQty = productActual[pname];
         const totalPrice = product.price * actualQty;
-        const perUnitPrice = totalQty === 0 ? 0 : totalPrice / totalQty;
-        subtotal += perUnitPrice * qty;
 
+        // --- Perhitungan proporsional: harga produk dibagi sesuai input peserta ---
+        let totalProduk = 0;
+        // --- LOGIKA PEMBAGIAN SESUAI PERMINTAAN ---
+        if (totalQty <= actualQty) {
+          // Jika pembagian kurang dari/jumlah produk, pakai harga satuan
+          totalProduk = qty * product.price;
+          subtotal += totalProduk;
+        } else if (totalQty > actualQty && totalQty > 0) {
+          // Jika pembagian melebihi stok, bagi proporsional
+          totalProduk = (qty / totalQty) * totalPrice;
+          subtotal += totalProduk;
+        }
         if (qty > 0) {
-          purchasedProducts.push({ product: pname, quantity: qty });
+          purchasedProducts.push({ product: pname, quantity: qty, totalProduk: Math.round(totalProduk) });
         }
       });
 
@@ -264,7 +274,10 @@
 
       resultHtml += `<strong>${result.name}</strong><br>`;
       result.purchasedProducts.forEach(p => {
-        resultHtml += `${p.product} - ${p.quantity} pcs<br>`;
+          // Cari harga satuan produk
+          const product = productList.find(pr => pr.name === p.product);
+          const totalProduk = product ? product.price * p.quantity : 0;
+          resultHtml += `${p.product} X ${p.quantity} pcs = ${p.totalProduk.toLocaleString()}<br>`;
       });
       resultHtml += `<b>Total:</b> Rp ${total.toLocaleString()}<br><br>`;
     });
@@ -276,6 +289,23 @@
     if (layanan > 0) resultHtml += `<b>Biaya Layanan:</b> Rp ${layanan.toLocaleString()}<br>`;
     resultHtml += `<b>Grand Total:</b> Rp ${grandTotal.toLocaleString()}<br>`;
     resultHtml += `<b>Total Semua Partisipan:</b> Rp ${totalCheck.toLocaleString()}`;
+
+    // Cek produk yang belum terpilih
+    let sisaProdukList = [];
+    productList.forEach(p => {
+      const sisa = p.quantity - productTotals[p.name];
+      if (sisa > 0) {
+        sisaProdukList.push(`${p.name} (${sisa} pcs)`);
+      }
+    });
+
+    if (totalCheck < grandTotal && sisaProdukList.length > 0) {
+      resultHtml += `<br><b>Produk yang belum terpilih/dibagi:</b><br>`;
+      sisaProdukList.forEach(item => {
+        resultHtml += `- ${item}<br>`;
+      });
+    }
+
     document.getElementById("totalResult").innerHTML = resultHtml;
   }
 </script>
