@@ -2,60 +2,186 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Split Bill System</title>
+  <title>UpStruk - Split Bill</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .container { display: flex; flex-direction: column; gap: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    table, th, td { border: 1px solid #999; }
-    th, td { padding: 8px; text-align: center; }
-    .participant { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
-    .participant input { margin-bottom: 5px; }
-    .total { margin-top: 10px; font-weight: bold; }
-    .button { margin-top: 10px; }
-    .delete-btn { background-color: red; color: white; border: none; margin-left: 10px; padding: 2px 5px; cursor: pointer; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    .header {
+      background: linear-gradient(90deg, #1976d2 60%, #42a5f5 100%);
+      color: #fff;
+      padding: 24px 0 16px 0;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      letter-spacing: 2px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(25, 118, 210, 0.08);
+      padding: 32px 24px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    label, .total, .button {
+      color: #1976d2;
+      font-weight: 500;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #e3f0fa;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    table, th, td {
+      border: 1px solid #90caf9;
+    }
+    th {
+      background: #1976d2;
+      color: #fff;
+      padding: 10px 6px;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+    td {
+      padding: 8px 6px;
+      background: #f7fbff;
+      font-size: 0.98rem;
+    }
+    .participant {
+      border: 1.5px solid #90caf9;
+      background: #e3f0fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 10px;
+      box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+    }
+    .participant input[type="text"] {
+      border: 1px solid #90caf9;
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+      width: 120px;
+    }
+    .participant input[type="number"] {
+      border: 1px solid #90caf9;
+      border-radius: 4px;
+      padding: 2px 6px;
+      width: 60px;
+      margin-bottom: 4px;
+    }
+    .delete-btn {
+      background-color: #e53935;
+      color: #fff;
+      border: none;
+      margin-left: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .delete-btn:hover {
+      background: #b71c1c;
+    }
+    .button button, button {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin-top: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+      transition: background 0.2s;
+    }
+    .button button:hover, button:hover {
+      background: #1565c0;
+    }
+    .total {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #1976d2;
+    }
+    #totalResult {
+      background: #e3f0fa;
+      border-radius: 8px;
+      padding: 18px 16px;
+      margin-top: 18px;
+      font-size: 1.05rem;
+      color: #222;
+      box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+    }
+    .status-success {
+      color: #2e7d32;
+      font-weight: bold;
+    }
+    .status-warning {
+      color: #f9a825;
+      font-weight: bold;
+    }
+    .status-error {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    @media (max-width: 700px) {
+      .container { padding: 10px 2vw; }
+      table, th, td { font-size: 0.95rem; }
+      .header h1 { font-size: 1.3rem; }
+    }
   </style>
 </head>
 <body>
-
-  <h2>Split Bill System</h2>
-  <p id="storeInfo"></p>
-  
-  <!-- Dropdown untuk memilih ID struk -->
-  <div>
-    <label for="strukSelect">Pilih Struk:</label>
-    <select id="strukSelect" onchange="fetchStrukData()">
-      <option value="">Pilih Struk</option>
-      <!-- Option struk akan diisi secara dinamis -->
-    </select>
+  <div class="header">
+    <h1>UpStruk - Split Bill System</h1>
+    <div style="font-size:1.1rem; font-weight:400;">Bagi tagihan struk dengan mudah dan adil</div>
   </div>
-  
   <div class="container">
-      <h3>Daftar Produk</h3>
-      <table id="productTable">
-        <thead>
-          <tr>
-            <th>Nama Produk</th>
-            <th>Jumlah</th>
-            <th>Harga</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    
-      <button onclick="addParticipant()">Tambah Partisipan</button>
-      <div id="participants"></div>
-    
-      <div class="button">
-        <button onclick="calculateSplit()">Hitung Split</button>
-      </div>
-      <div class="total" id="totalResult"></div>
+    <p id="storeInfo"></p>
+    <div>
+      <label for="strukSelect">Pilih Struk:</label>
+      <select id="strukSelect" onchange="fetchStrukData()">
+        <option value="">Pilih Struk</option>
+      </select>
+    </div>
+    <h3>Daftar Produk</h3>
+    <table id="productTable">
+      <thead>
+        <tr>
+          <th>Nama Produk</th>
+          <th>Jumlah</th>
+          <th>Harga</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="addParticipant()">Tambah Partisipan</button>
+    <div id="participants"></div>
+    <div class="button">
+      <button onclick="calculateSplit()">Hitung Split</button>
+    </div>
+    <div class="total" id="totalResult"></div>
   </div>
-  
-  <pre id="output" style="white-space: pre-wrap;"></pre>  
-
+  <pre id="output" style="white-space: pre-wrap;"></pre>
 <script>
   // Memuat data ID struk dari API dan menampilkannya di dropdown
   function loadStrukIds() {
@@ -272,12 +398,18 @@
       const total = result.subtotal + adjustment;
       totalCheck += total;
 
+      // Hitung proporsi subtotal peserta terhadap subtotal semua
+      const proporsi = subtotalSum > 0 ? result.subtotal / subtotalSum : 0;
+
+      // Hitung bagian pajak, layanan, diskon, lainnya untuk peserta ini
+      const pajakPerOrang = Math.round(pajak * proporsi);
+      const layananPerOrang = Math.round(layanan * proporsi);
+      const diskonPerOrang = Math.round(diskon * proporsi);
+      const lainnyaPerOrang = Math.round(lainnya * proporsi);
+
       resultHtml += `<strong>${result.name}</strong><br>`;
       result.purchasedProducts.forEach(p => {
-          // Cari harga satuan produk
-          const product = productList.find(pr => pr.name === p.product);
-          const totalProduk = product ? product.price * p.quantity : 0;
-          resultHtml += `${p.product} X ${p.quantity} pcs = ${p.totalProduk.toLocaleString()}<br>`;
+        resultHtml += `${p.product} - ${p.quantity} pcs = ${p.totalProduk.toLocaleString()}<br>`;
       });
       resultHtml += `<b>Total:</b> Rp ${total.toLocaleString()}<br><br>`;
     });
@@ -289,6 +421,17 @@
     if (layanan > 0) resultHtml += `<b>Biaya Layanan:</b> Rp ${layanan.toLocaleString()}<br>`;
     resultHtml += `<b>Grand Total:</b> Rp ${grandTotal.toLocaleString()}<br>`;
     resultHtml += `<b>Total Semua Partisipan:</b> Rp ${totalCheck.toLocaleString()}`;
+
+    // Tambahkan status split bill
+    if (totalCheck == grandTotal) {
+      resultHtml += `<br><span style="color:green;font-weight:bold;">Split bill sesuai dengan Grand Total.</span>`;
+    } else if (totalCheck < grandTotal) {
+      const kurang = grandTotal - totalCheck;
+      resultHtml += `<br><span style="color:red;font-weight:bold;">Split bill belum sesuai, kurang Rp ${kurang.toLocaleString()} lagi.</span>`;
+    } else if (totalCheck > grandTotal) {
+      const lebih = totalCheck - grandTotal;
+      resultHtml += `<br><span style="color:orange;font-weight:bold;">Split bill melebihi Grand Total, kelebihan Rp ${lebih.toLocaleString()}.</span>`;
+    }
 
     // Cek produk yang belum terpilih
     let sisaProdukList = [];
@@ -309,6 +452,5 @@
     document.getElementById("totalResult").innerHTML = resultHtml;
   }
 </script>
-
 </body>
 </html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Daftar Struk Tersimpan - UpStruk</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    .header {
+      background: linear-gradient(90deg, #1976d2 60%, #42a5f5 100%);
+      color: #fff;
+      padding: 24px 0 16px 0;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      letter-spacing: 2px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(25, 118, 210, 0.08);
+      padding: 32px 24px 24px 24px;
+    }
+    select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #90caf9;
+      font-size: 1rem;
+      margin-bottom: 18px;
+      margin-top: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      background: #e3f0fa;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th {
+      background: #1976d2;
+      color: #fff;
+      padding: 10px 6px;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+    th, td {
+      border: 1px solid #90caf9;
+      padding: 8px 6px;
+      text-align: left;
+    }
+    .summary {
+      margin-top: 18px;
+      background: #f7fbff;
+      border-radius: 8px;
+      padding: 14px 12px;
+      color: #1976d2;
+      font-size: 1.05rem;
+      box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+    }
+    @media (max-width: 700px) {
+      .container { padding: 10px 2vw; }
+      table, th, td { font-size: 0.95rem; }
+      .header h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Daftar Struk Tersimpan</h1>
+    <div style="font-size:1.1rem; font-weight:400;">Pilih struk untuk melihat detailnya</div>
+  </div>
+  <div class="container">
+    <label for="strukSelect">Pilih Struk:</label>
+    <select id="strukSelect" onchange="fetchStrukData()">
+      <option value="">Pilih Struk</option>
+    </select>
+    <div id="strukInfo" style="margin-top:18px;"></div>
+    <table id="productTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Nama Produk</th>
+          <th>Jumlah</th>
+          <th>Harga</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="summary" id="summary" style="display:none;"></div>
+  </div>
+<script>
+  // Memuat data ID struk dari API dan menampilkannya di dropdown
+  function loadStrukIds() {
+    fetch("http://127.0.0.1:8000/page/struk-list/")
+      .then(res => res.json())
+      .then(data => {
+        const sortedData = data.sort((a, b) => b.id - a.id).slice(0, 20);
+        const strukSelect = document.getElementById("strukSelect");
+        strukSelect.innerHTML = '<option value="">Pilih Struk</option>';
+        sortedData.forEach(struk => {
+          const option = document.createElement("option");
+          option.value = struk.id;
+          option.textContent = `Struk: ${struk.nama_toko} (${struk.tanggal})`;
+          strukSelect.appendChild(option);
+        });
+      })
+      .catch(err => console.error("Error loading struk IDs:", err));
+  }
+
+  function fetchStrukData() {
+    const strukId = document.getElementById("strukSelect").value;
+    if (!strukId) {
+      document.getElementById("strukInfo").innerHTML = "";
+      document.getElementById("productTable").style.display = "none";
+      document.getElementById("summary").style.display = "none";
+      return;
+    }
+    fetch(`http://127.0.0.1:8000/page/struk-terbaru/${strukId}/`)
+      .then(res => res.json())
+      .then(data => {
+        // Info toko dan tanggal
+        document.getElementById("strukInfo").innerHTML = `
+          <strong>Nama Toko:</strong> ${data.toko} <br>
+          <strong>Tanggal:</strong> ${data.tanggal}
+        `;
+        // Tabel produk
+        const tbody = document.querySelector("#productTable tbody");
+        tbody.innerHTML = "";
+        data.produk.forEach(item => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${item.namaProduk}</td>
+              <td>${item.jumlah}</td>
+              <td>${item.harga}</td>
+              <td>${item.jumlahHarga}</td>
+            </tr>
+          `;
+        });
+        document.getElementById("productTable").style.display = "";
+        // Summary
+        const s = data.summary;
+        let summaryHtml = `<b>Subtotal:</b> Rp ${s["Subtotal"].toLocaleString()}<br>`;
+        if (s["Diskon"] > 0) summaryHtml += `<b>Diskon:</b> Rp ${s["Diskon"].toLocaleString()}<br>`;
+        if (s["Lainnya"] > 0) summaryHtml += `<b>Lainnya:</b> Rp ${s["Lainnya"].toLocaleString()}<br>`;
+        if (s["Pajak"] > 0) summaryHtml += `<b>Pajak:</b> Rp ${s["Pajak"].toLocaleString()}<br>`;
+        if (s["Biaya Layanan"] > 0) summaryHtml += `<b>Biaya Layanan:</b> Rp ${s["Biaya Layanan"].toLocaleString()}<br>`;
+        summaryHtml += `<b>Grand Total:</b> Rp ${s["Grand Total"].toLocaleString()}`;
+        document.getElementById("summary").innerHTML = summaryHtml;
+        document.getElementById("summary").style.display = "";
+      })
+      .catch(err => {
+        document.getElementById("strukInfo").innerText = "Gagal memuat data dari server.";
+        document.getElementById("productTable").style.display = "none";
+        document.getElementById("summary").style.display = "none";
+        console.error("Error:", err);
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadStrukIds();
+  });
+</script>
+</body>
+</html>

@@ -3,46 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>UpStruk</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(120deg, #1976d2 60%, #42a5f5 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .frame {
+            background: #fff;
+            max-width: 420px;
+            margin: 60px auto 0 auto;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(25, 118, 210, 0.12);
+            padding: 36px 28px 32px 28px;
             text-align: center;
-            justify-content: center;
-            align-items: center;
-            margin: 50px;
-            background-color: whitesmoke;
+        }
+        .logo {
+            height: 64px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            color: #1976d2;
+            margin-bottom: 8px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+        }
+        p {
+            color: #333;
+            margin-bottom: 18px;
         }
         .button-container {
-            margin-top: 20px;
+            margin-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
         .button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 10px;
+            padding: 12px 0;
+            font-size: 1.08rem;
             cursor: pointer;
             border: none;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
+            background: linear-gradient(90deg, #1976d2 60%, #42a5f5 100%);
+            color: #fff;
+            border-radius: 7px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+            transition: background 0.2s, transform 0.2s;
         }
         .button:hover {
-            background-color: #0056b3;
+            background: #1565c0;
+            transform: translateY(-2px) scale(1.03);
+        }
+        @media (max-width: 600px) {
+            .frame {
+                margin: 24px 6vw 0 6vw;
+                padding: 22px 8vw 18px 8vw;
+            }
+            h1 { font-size: 1.3rem; }
         }
     </style>
 </head>
 <body>
     <div class="frame">
         <h1>Selamat Datang di Website UpStruk</h1>
-        <p>|^_^|*.*|>_<</p>
-        <p>Silakan pilih salah satu opsi di bawah ini:</p>
-        
+        <p style="font-size:1.2rem;">Digitalisasi & Split Bill Struk Belanja Anda</p>
+        <p style="font-size:1.2rem;">*-*</p>
+        <p style="color:#1976d2;">Silakan pilih salah satu opsi di bawah ini:</p>
         <div class="button-container">
             <button class="button" onclick="window.location.href='upload-struk'">Upload Struk 4 Belanja</button>
             <button class="button" onclick="window.location.href='upload-struk3'">Upload Struk 3 Belanja</button>
-            <button class="button" onclick="window.location.href='upload-struk/split-bill'">Spillbill</button>
             <button class="button" onclick="window.location.href='upload-bensin'">Upload Struk Bensin</button>
+            <button class="button" onclick="window.location.href='upload-struk/split-bill'">Split Bill</button>
+            <button class="button" onclick="window.location.href='Daftar-list'">Struk List</button>
         </div>
-</div>
+    </div>
 </body>
 </html>

@@ -3,47 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Struk Belanja</title>
+    <title>UpStruk</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: left;
-            padding: 20px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f4f8fb;
+            margin: 0;
+            padding: 0;
+            color: #222;
+        }
+        .header {
+            background: linear-gradient(90deg, #1976d2 60%, #42a5f5 100%);
+            color: #fff;
+            padding: 24px 0 16px 0;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
         }
         .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 24px rgba(25, 118, 210, 0.08);
+            padding: 32px 24px 24px 24px;
             display: flex;
-            justify-content: left;
-            align-items: flex-start;
-            gap: 20px;
+            flex-direction: row;
+            gap: 32px;
         }
         #preview {
-            width: 30%;
+            width: 260px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);
             display: none;
+            object-fit: contain; 
+            margin-bottom: 12px;
+            background: #fff;
         }
         .result-container {
-            width: 70%;
-            border: 2px solid #000;
-            padding: 10px;
+            flex: 1;
+            border: 1.5px solid #90caf9;
+            background: #e3f0fa;
+            border-radius: 10px;
+            padding: 18px 18px 12px 18px;
+            min-width: 320px;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
         }
         #output {
             margin-top: 10px;
             text-align: left;
         }
         .divider {
-            border-top: 2px dashed black;
+            border-top: 2px dashed #1976d2;
             margin: 10px 0;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 10px;
+            background: #f7fbff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th {
+            background: #1976d2;
+            color: #fff;
+            padding: 10px 6px;
+            font-size: 1rem;
+            letter-spacing: 1px;
         }
         th, td {
-            border: 1px solid black;
-            padding: 8px;
+            border: 1px solid #90caf9;
+            padding: 8px 6px;
             text-align: left;
         }
         .editable {
@@ -51,34 +90,92 @@
             min-width: 50px;
             padding: 2px;
             border: 1px dashed transparent;
+            background: #e3f0fa;
+            border-radius: 4px;
         }
         .editable:focus {
-            border: 1px dashed black;
+            border: 1px dashed #1976d2;
             outline: none;
+            background: #fff;
         }
         button {
             margin-top: 10px;
-            padding: 8px;
+            padding: 8px 18px;
             cursor: pointer;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+            transition: background 0.2s, transform 0.2s;
+        }
+        button:hover {
+            background: #1565c0;
+            transform: translateY(-2px) scale(1.03);
+        }
+        .action-column button {
+            background: #e53935;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            padding: 4px 10px;
+            margin: 0;
+        }
+        .action-column button:hover {
+            background: #b71c1c;
+        }
+        #summary {
+            margin-top: 18px;
+            background: #f7fbff;
+            border-radius: 8px;
+            padding: 14px 12px;
+            color: #1976d2;
+            font-size: 1.05rem;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+        }
+        #text {
+            color: #1976d2;
+            font-weight: 500;
+            margin-top: 16px;
+        }
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+                padding: 10px 2vw;
+                gap: 18px;
+            }
+            #preview {
+                width: 100%;
+                max-width: 320px;
+                margin: 0 auto 12px auto;
+                display: block;
+            }
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 6px 2vw;
+            }
+            .header h1 { font-size: 1.3rem; }
         }
     </style>
 </head>
 <body>
-    <h1>Unggah Struk yang akan diproses</h1>
-    <p>Diharapkan Mengupload Gambar yang Bersih dan Jelas serta Sejajar dan Presisi !!!</p>
-    
-    <form id="uploadForm" method="POST" enctype="multipart/form-data">
+    <div class="header">
+        <h1>Unggah Struk yang akan diproses</h1>
+        <div style="font-size:1.1rem; font-weight:400;">Upload gambar struk yang bersih, jelas, dan presisi</div>
+    </div>
+    <form id="uploadForm" method="POST" enctype="multipart/form-data" style="text-align:center; margin-bottom:18px;">
         {% csrf_token %}
-        <input type="file" id="fileInput" name="image" accept="image/*">
-        <br><br>
+        <input type="file" id="fileInput" name="image" accept="image/*" style="margin-bottom:10px;">
+        <br>
         <button type="button" id="uploadButton">Unggah</button>
     </form>
-
     <div class="container">
         <img id="preview" src="" alt="Preview Gambar">
         <div class="result-container" id="resultContainer">
             <div id="output"></div>
-            
             <table id="tableOutput" style="display:none;">
                 <thead>
                     <tr>
@@ -93,14 +190,13 @@
             </table>
             <button id="addRowButton" style="display:none;">Tambah Baris</button>
             <button id="doneButton" style="display:none;">Selesai</button>
-
             <div id="summary"></div>
         </div>
     </div>
-    <p id="text" style="display:none;"> Untuk melakukan Split Bill di harapkan untuk Save hasil</p>
+    <p id="text" style="display:none;">Untuk melakukan Split Bill diharapkan untuk Save hasil</p>
     <button id="editButton" style="display:none;">Edit</button>
     <button id="saveButton" style="display:none;">Save Hasil</button>
-    <button id="splitButton" style="display:none;"onclick="window.location.href='split-bill'">SplitBill</button>
+    <button id="splitButton" style="display:none;" onclick="window.location.href='split-bill'">SplitBill</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
     <button id="saveButton" style="display:none;">Save Hasil</button>
