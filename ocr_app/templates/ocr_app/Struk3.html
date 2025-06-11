@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UpStruk</title>
+    <link rel="icon" type="image/jpg" href="/Media/logo/UpStruk.jpg">
+    <title>UpStruk - Struk Belanja 3</title>
     <link rel="shortcut icon" href="Upstru" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -166,7 +167,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Unggah Struk (Struk3)</h1>
+        <h1>Unggah Struk yang akan diproses</h1>
         <div style="font-size:1.1rem; font-weight:400;">Upload gambar struk yang bersih, jelas, dan presisi</div>
     </div>
     <form id="uploadForm" method="POST" enctype="multipart/form-data" style="text-align:center; margin-bottom:18px;">
@@ -236,7 +237,7 @@
         reader.readAsDataURL(file);
         // Kirim data ke backend Django (endpoint Struk3)
         const csrftoken = getCookie('csrftoken');
-        fetch('http://127.0.0.1:8000/page/Struk3/', {
+        fetch('http://127.0.0.1:8000/Struk3/', {
             method: 'POST',
             body: formData,
             headers: { 'X-CSRFToken': csrftoken }
@@ -416,7 +417,7 @@
             "Data": { Produk: produk },
             ...summary
         };
-        fetch("/page/save-struk/", {
+        fetch("save-struk/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dataToSave)

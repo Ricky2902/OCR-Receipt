@@ -37,3 +37,20 @@ class DataProduk(models.Model):
 
     def __str__(self):
         return self.nama
+
+class DataBensin(models.Model):
+    nama_SPBU = models.CharField(max_length=255)
+    tanggal = models.CharField(max_length=100)
+    total_bayar = models.CharField(max_length=50, null=True)
+    harga_per_liter = models.CharField(max_length=50, null=True)
+    jumlah_liter = models.CharField(max_length=50, null=True)
+
+    def __str__(self):
+        same_toko = DataBensin.objects.filter(nama_SPBU=self.nama_SPBU).order_by('id')
+        count = same_toko.count()
+
+        if count > 1:
+            index = list(same_toko).index(self) + 1  # Menambahkan angka pembeda
+            return f"{self.nama_SPBU} #{index}"
+
+        return f"{self.nama_SPBU}"

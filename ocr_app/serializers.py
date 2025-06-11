@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UploadedImage, DataStruk, DataProduk
+from .models import UploadedImage, DataStruk, DataProduk, DataBensin
 
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,3 +27,11 @@ class StrukSerializer(serializers.ModelSerializer):
         for produk in produk_data:
             DataProduk.objects.create(struk=struk, **produk)
         return struk
+
+class BensinSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataBensin
+        fields = [
+            'id', 'nama_SPBU', 'tanggal', 'total_bayar',
+            'harga_per_liter', 'jumlah_liter'
+        ]

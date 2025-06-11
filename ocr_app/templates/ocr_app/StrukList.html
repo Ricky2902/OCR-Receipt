@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Daftar Struk Tersimpan - UpStruk</title>
+  <link rel="icon" type="image/jpg" href="/Media/logo/UpStruk.jpg">
+  <title>UpStruk - List Struk</title>
   <style>
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -79,14 +80,23 @@
 <body>
   <div class="header">
     <h1>Daftar Struk Tersimpan</h1>
-    <div style="font-size:1.1rem; font-weight:400;">Pilih struk untuk melihat detailnya</div>
+    <div style="font-size:1.1rem; font-weight:400;">Pilih jenis struk dan data untuk melihat detailnya</div>
   </div>
   <div class="container">
-    <label for="strukSelect">Pilih Struk:</label>
-    <select id="strukSelect" onchange="fetchStrukData()">
-      <option value="">Pilih Struk</option>
+    <label for="jenisStruk">Pilih Jenis Struk:</label>
+    <select id="jenisStruk" onchange="onJenisStrukChange()">
+      <option value="">-- Pilih Jenis Struk --</option>
+      <option value="belanja">Struk Belanja</option>
+      <option value="bensin">Struk Bensin</option>
     </select>
+    <div id="pilihanStruk" style="display:none;">
+      <label for="strukSelect">Pilih Struk:</label>
+      <select id="strukSelect" onchange="fetchStrukData()">
+        <option value="">Pilih Struk</option>
+      </select>
+    </div>
     <div id="strukInfo" style="margin-top:18px;"></div>
+    <!-- Tabel produk belanja -->
     <table id="productTable" style="display:none;">
       <thead>
         <tr>
@@ -98,21 +108,63 @@
       </thead>
       <tbody></tbody>
     </table>
+    <!-- Tabel bensin -->
+    <table id="bensinTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Nama SPBU</th>
+          <th>Tanggal</th>
+          <th>Harga per Liter</th>
+          <th>Jumlah Liter</th>
+          <th>Total Bayar</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
     <div class="summary" id="summary" style="display:none;"></div>
   </div>
 <script>
+  let currentJenis = "";
+
+  function onJenisStrukChange() {
+    const jenis = document.getElementById("jenisStruk").value;
+    currentJenis = jenis;
+    document.getElementById("strukInfo").innerHTML = "";
+    document.getElementById("productTable").style.display = "none";
+    document.getElementById("bensinTable").style.display = "none";
+    document.getElementById("summary").style.display = "none";
+    if (!jenis) {
+      document.getElementById("pilihanStruk").style.display = "none";
+      return;
+    }
+    document.getElementById("pilihanStruk").style.display = "";
+    loadStrukIds(jenis);
+  }
+
   // Memuat data ID struk dari API dan menampilkannya di dropdown
-  function loadStrukIds() {
-    fetch("http://127.0.0.1:8000/page/struk-list/")
+  function loadStrukIds(jenis) {
+    let url = "";
+    if (jenis === "belanja") {
+      url = "http://127.0.0.1:8000/struk-list/";
+    } else if (jenis === "bensin") {
+      url = "http://127.0.0.1:8000/bensin-list/";
+    }
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         const sortedData = data.sort((a, b) => b.id - a.id).slice(0, 20);
         const strukSelect = document.getElementById("strukSelect");
         strukSelect.innerHTML = '<option value="">Pilih Struk</option>';
         sortedData.forEach(struk => {
+          let label = "";
+          if (jenis == "belanja") {
+            label = `Struk: ${struk.nama_toko} (${struk.tanggal})`;
+          } else if (jenis == "bensin") {
+            label = `SPBU: ${struk.nama_SPBU} (${struk.tanggal})`;
+          }
           const option = document.createElement("option");
           option.value = struk.id;
-          option.textContent = `Struk: ${struk.nama_toko} (${struk.tanggal})`;
+          option.textContent = label;
           strukSelect.appendChild(option);
         });
       })
@@ -124,53 +176,83 @@
     if (!strukId) {
       document.getElementById("strukInfo").innerHTML = "";
       document.getElementById("productTable").style.display = "none";
+      document.getElementById("bensinTable").style.display = "none";
       document.getElementById("summary").style.display = "none";
       return;
     }
-    fetch(`http://127.0.0.1:8000/page/struk-terbaru/${strukId}/`)
-      .then(res => res.json())
-      .then(data => {
-        // Info toko dan tanggal
-        document.getElementById("strukInfo").innerHTML = `
-          <strong>Nama Toko:</strong> ${data.toko} <br>
-          <strong>Tanggal:</strong> ${data.tanggal}
-        `;
-        // Tabel produk
-        const tbody = document.querySelector("#productTable tbody");
-        tbody.innerHTML = "";
-        data.produk.forEach(item => {
-          tbody.innerHTML += `
+    if (currentJenis === "belanja") {
+      fetch(`http://127.0.0.1:8000/struk-terbaru/${strukId}/`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("strukInfo").innerHTML = `
+            <strong>Nama Toko:</strong> ${data.toko} <br>
+            <strong>Tanggal:</strong> ${data.tanggal}
+          `;
+          // Tabel produk
+          const tbody = document.querySelector("#productTable tbody");
+          tbody.innerHTML = "";
+          data.produk.forEach(item => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${item.namaProduk}</td>
+                <td>${item.jumlah}</td>
+                <td>${item.harga}</td>
+                <td>${item.jumlahHarga}</td>
+              </tr>
+            `;
+          });
+          document.getElementById("productTable").style.display = "";
+          document.getElementById("bensinTable").style.display = "none";
+          // Summary
+          const s = data.summary;
+          let summaryHtml = `<b>Subtotal:</b> Rp ${s["Subtotal"].toLocaleString()}<br>`;
+          if (s["Diskon"] > 0) summaryHtml += `<b>Diskon:</b> Rp ${s["Diskon"].toLocaleString()}<br>`;
+          if (s["Lainnya"] > 0) summaryHtml += `<b>Lainnya:</b> Rp ${s["Lainnya"].toLocaleString()}<br>`;
+          if (s["Pajak"] > 0) summaryHtml += `<b>Pajak:</b> Rp ${s["Pajak"].toLocaleString()}<br>`;
+          if (s["Biaya Layanan"] > 0) summaryHtml += `<b>Biaya Layanan:</b> Rp ${s["Biaya Layanan"].toLocaleString()}<br>`;
+          summaryHtml += `<b>Grand Total:</b> Rp ${s["Grand Total"].toLocaleString()}`;
+          document.getElementById("summary").innerHTML = summaryHtml;
+          document.getElementById("summary").style.display = "";
+        })
+        .catch(err => {
+          document.getElementById("strukInfo").innerText = "Gagal memuat data dari server.";
+          document.getElementById("productTable").style.display = "none";
+          document.getElementById("bensinTable").style.display = "none";
+          document.getElementById("summary").style.display = "none";
+          console.error("Error:", err);
+        });
+    } else if (currentJenis === "bensin") {
+      fetch(`http://127.0.0.1:8000/bensin-terbaru/${strukId}/`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("strukInfo").innerHTML = "";
+          // Tabel bensin
+          const tbody = document.querySelector("#bensinTable tbody");
+          tbody.innerHTML = `
             <tr>
-              <td>${item.namaProduk}</td>
-              <td>${item.jumlah}</td>
-              <td>${item.harga}</td>
-              <td>${item.jumlahHarga}</td>
+              <td>${data.nama_SPBU}</td>
+              <td>${data.tanggal}</td>
+              <td>${data.harga_per_liter}</td>
+              <td>${data.jumlah_liter}</td>
+              <td>${data.total_bayar}</td>
             </tr>
           `;
+          document.getElementById("bensinTable").style.display = "";
+          document.getElementById("productTable").style.display = "none";
+          // Summary
+          let summaryHtml = `<b>Total Bayar:</b> Rp ${data.total_bayar}<br>`;
+          document.getElementById("summary").innerHTML = summaryHtml;
+          document.getElementById("summary").style.display = "";
+        })
+        .catch(err => {
+          document.getElementById("strukInfo").innerText = "Gagal memuat data dari server.";
+          document.getElementById("productTable").style.display = "none";
+          document.getElementById("bensinTable").style.display = "none";
+          document.getElementById("summary").style.display = "none";
+          console.error("Error:", err);
         });
-        document.getElementById("productTable").style.display = "";
-        // Summary
-        const s = data.summary;
-        let summaryHtml = `<b>Subtotal:</b> Rp ${s["Subtotal"].toLocaleString()}<br>`;
-        if (s["Diskon"] > 0) summaryHtml += `<b>Diskon:</b> Rp ${s["Diskon"].toLocaleString()}<br>`;
-        if (s["Lainnya"] > 0) summaryHtml += `<b>Lainnya:</b> Rp ${s["Lainnya"].toLocaleString()}<br>`;
-        if (s["Pajak"] > 0) summaryHtml += `<b>Pajak:</b> Rp ${s["Pajak"].toLocaleString()}<br>`;
-        if (s["Biaya Layanan"] > 0) summaryHtml += `<b>Biaya Layanan:</b> Rp ${s["Biaya Layanan"].toLocaleString()}<br>`;
-        summaryHtml += `<b>Grand Total:</b> Rp ${s["Grand Total"].toLocaleString()}`;
-        document.getElementById("summary").innerHTML = summaryHtml;
-        document.getElementById("summary").style.display = "";
-      })
-      .catch(err => {
-        document.getElementById("strukInfo").innerText = "Gagal memuat data dari server.";
-        document.getElementById("productTable").style.display = "none";
-        document.getElementById("summary").style.display = "none";
-        console.error("Error:", err);
-      });
+    }
   }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    loadStrukIds();
-  });
 </script>
 </body>
 </html>

@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
-from .models import UploadedImage, DataStruk, DataProduk
-from .serializers import ImageSerializer, StrukSerializer
+from .models import UploadedImage, DataStruk, DataProduk, DataBensin
+from .serializers import ImageSerializer, StrukSerializer, BensinSerializer
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -72,13 +72,46 @@ def save_struk(request):
             return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"})
     else:
         return JsonResponse({"status": "error", "message": "Metode tidak diizinkan."})
+@csrf_exempt
+def save_bensin(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            print("data",data)
+
+            nama_SPBU = data.get("Nama SPBU", "")
+            tanggal = data.get("Tanggal", "")
+            total_bayar = data.get("Total Harga", "")
+            harga_per_liter = data.get("Nominal", "")
+            jumlah_liter = data.get("Volume", "")
+
+            # Simpan data Bensin
+            bensin = DataBensin.objects.create(
+                nama_SPBU=nama_SPBU,
+                tanggal=tanggal,
+                total_bayar=total_bayar,
+                harga_per_liter=harga_per_liter,
+                jumlah_liter=jumlah_liter
+            )
+
+            return JsonResponse({"status": "success", "message": "Data Bensin berhasil disimpan."})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"})
+    else:
+        return JsonResponse({"status": "error", "message": "Metode tidak diizinkan."})
 
 @api_view(['GET'])
 def struk_list(request):
     struks = DataStruk.objects.all()
     serializer = StrukSerializer(struks, many=True)
     return Response(serializer.data)
- 
+@api_view(['GET'])
+def bensin_list(request):
+    bensins = DataBensin.objects.all()
+    serializer2 = BensinSerializer(bensins, many=True)
+    return Response(serializer2.data)
+
 class StrukTerbaruView(APIView):
     def get(self, request, struk_id):
         struk = DataStruk.objects.get(id = struk_id)
@@ -107,6 +140,20 @@ class StrukTerbaruView(APIView):
         }
         return Response(data)
 
+class bensinTerbaruView(APIView):
+    def get(self, request, bensin_id):
+        bensin = DataBensin.objects.get(id=bensin_id)
+
+        # Format data untuk JSON
+        data = {
+            "nama_SPBU": bensin.nama_SPBU,
+            "tanggal": bensin.tanggal,
+            "total_bayar": bensin.total_bayar,
+            "harga_per_liter": bensin.harga_per_liter,
+            "jumlah_liter": bensin.jumlah_liter
+        }
+        return Response(data)
+    
 class Bensin(APIView):
     parser_classes = (MultiPartParser, FormParser)
     

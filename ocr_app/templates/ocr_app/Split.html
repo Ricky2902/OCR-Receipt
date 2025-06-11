@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/jpg" href="/Media/logo/UpStruk.jpg">
   <title>UpStruk - Split Bill</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
@@ -151,7 +152,7 @@
 </head>
 <body>
   <div class="header">
-    <h1>UpStruk - Split Bill System</h1>
+    <h1>UpStruk - Split Bill</h1>
     <div style="font-size:1.1rem; font-weight:400;">Bagi tagihan struk dengan mudah dan adil</div>
   </div>
   <div class="container">
@@ -185,7 +186,7 @@
 <script>
   // Memuat data ID struk dari API dan menampilkannya di dropdown
   function loadStrukIds() {
-  fetch("http://127.0.0.1:8000/page/struk-list/")
+  fetch("http://127.0.0.1:8000/struk-list/")
     .then(res => res.json())
     .then(data => {
       // Urutkan berdasarkan id terbesar (terbaru) dan ambil 10 teratas
@@ -215,7 +216,7 @@
     return;
   }
 
-  fetch(`http://127.0.0.1:8000/page/struk-terbaru/${strukId}/`)
+  fetch(`http://127.0.0.1:8000/struk-terbaru/${strukId}/`)
     .then(res => res.json())
     .then(data => {
       console.log(data);  // Log data untuk memeriksa respons API

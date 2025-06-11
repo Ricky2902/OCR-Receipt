@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UpStruk</title>
+    <link rel="icon" type="image/jpg" href="/Media/logo/UpStruk.jpg">
+    <title>UpStruk - Struk Belanja 4</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -240,7 +241,7 @@
          // Kirim data ke backend Django
          const csrftoken = getCookie('csrftoken');
 
-        fetch('http://127.0.0.1:8000/page/Struk/', {
+        fetch('http://127.0.0.1:8000/Struk/', {
             method: 'POST',
             body: formData,
             headers: {
@@ -460,7 +461,7 @@
             ...summary
         };
 
-        fetch("/page/save-struk/", {
+        fetch("save-struk/", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UpStruk</title>
+    <link rel="icon" type="image/jpg" href="/Media/logo/UpStruk.jpg">
+    <title>UpStruk - Struk Bensin</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -141,6 +142,9 @@
     <button id="editButton" style="display:none;">Edit</button>
     <button id="downloadButton" style="display:none;">Unduh Hasil Gambar</button>
     <button id="downloadExcelButton" style="display:none;">Unduh Hasil Excel</button>
+    <!-- Tambahkan tombol Save di bawah tombol download -->
+    <button id="saveToDbButton" style="display:none;">Save Hasil</button>
+
 <script>
     function getCookie(name) {
     let cookieValue = null;
@@ -189,7 +193,7 @@
         // Kirim data ke backend Django
         const csrftoken = getCookie('csrftoken');
 
-        fetch(`${window.location.origin}/page/Bensin/`, {
+        fetch(`${window.location.origin}/Bensin/`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -233,6 +237,7 @@
         document.getElementById('editButton').style.display = "block";
         document.getElementById('downloadButton').style.display = "block";
         document.getElementById('downloadExcelButton').style.display = "block";
+        document.getElementById('saveToDbButton').style.display = "block"; // Tampilkan tombol Save ke DB
     });
 
     document.getElementById('editButton').addEventListener('click', function () {
@@ -287,6 +292,37 @@
 
         const fileName = `Data_Struk_${summaryData["Nama SPBU"]}.xlsx`;
         XLSX.writeFile(wb, fileName);
+    });
+
+    // Event untuk tombol Save ke Database
+    document.getElementById('saveToDbButton').addEventListener('click', function () {
+        let summaryElements = document.querySelectorAll("#summary p span");
+        let summaryData = {
+            "Nama SPBU": summaryElements[0]?.textContent || "",
+            "Tanggal": summaryElements[1]?.textContent || "",
+            "Produk": summaryElements[2]?.textContent || "",
+            "Nominal": summaryElements[3]?.textContent || "",
+            "Volume": summaryElements[4]?.textContent || "",
+            "Total Harga": summaryElements[5]?.textContent || "",
+        };
+
+        fetch(`${window.location.origin}/save-bensin/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie('csrftoken')
+            },
+            body: JSON.stringify(summaryData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message || "Data berhasil disimpan!");
+            // document.getElementById('saveToDbButton').style.display = "none"; // HAPUS atau KOMENTARI baris ini
+        })
+        .catch(err => {
+            alert("Gagal menyimpan data ke database.");
+            console.error(err);
+        });
     });
 </script>
 </body>
